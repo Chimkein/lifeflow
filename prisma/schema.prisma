@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Auth.js models
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  connectedAccounts ConnectedAccount[]
+  calendarEvents   CalendarEvent[]
+  notes            Note[]
+  tasks            Task[]
+  automationRules  AutomationRule[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model ConnectedAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+  scope             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+}
+
+model CalendarEvent {
+  id            String   @id @default(cuid())
+  userId        String
+  googleEventId String?
+  calendarId    String?
+  title         String
+  description   String?
+  location      String?
+  startTime     DateTime
+  endTime       DateTime
+  timezone      String   @default("UTC")
+  status        String   @default("confirmed")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventNotes EventNote[]
+  eventTasks EventTask[]
+
+  @@unique([userId, googleEventId])
+  @@index([userId, startTime])
+}
+
+model Note {
+  id         String    @id @default(cuid())
+  userId     String
+  title      String
+  content    String    @default("")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags       NoteTag[]
+  eventNotes EventNote[]
+  taskNotes  TaskNote[]
+
+  @@index([userId, createdAt])
+}
+
+model NoteTag {
+  id     String @id @default(cuid())
+  noteId String
+  tag    String
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, tag])
+  @@index([tag])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  status      String    @default("pending")
+  priority    String    @default("medium")
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskNotes  TaskNote[]
+  eventTasks EventTask[]
+
+  @@index([userId, status])
+  @@index([userId, dueAt])
+}
+
+model EventNote {
+  eventId String
+  noteId  String
+
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  note  Note          @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, noteId])
+}
+
+model TaskNote {
+  taskId String
+  noteId String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, noteId])
+}
+
+model EventTask {
+  eventId String
+  taskId  String
+
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  task  Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, taskId])
+}
+
+model AutomationRule {
+  id            String  @id @default(cuid())
+  userId        String
+  name          String
+  enabled       Boolean @default(true)
+  triggerType   String
+  triggerConfig Json    @default("{}")
+  actionType    String
+  actionConfig  Json    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
