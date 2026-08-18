@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { handleUpdate } from "@/lib/telegram-bot";
 import { isBotConfigured, type TelegramUpdate } from "@/lib/telegram";
-import { after } from "next/server";
+
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   if (!isBotConfigured()) {
@@ -14,20 +15,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let update: TelegramUpdate;
   try {
-    update = await req.json();
-  } catch {
-    return NextResponse.json({ ok: true });
+    const update: TelegramUpdate = await req.json();
+    await handleUpdate(update);
+  } catch (err) {
+    console.error("[Telegram Webhook] Error:", err);
   }
-
-  after(async () => {
-    try {
-      await handleUpdate(update);
-    } catch (err) {
-      console.error("[Telegram Webhook] Error:", err);
-    }
-  });
 
   return NextResponse.json({ ok: true });
 }

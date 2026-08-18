@@ -7,6 +7,8 @@ import {
   type ChatMessage,
 } from "@/lib/ollama";
 
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -46,15 +48,19 @@ export async function POST(req: Request) {
     data: { conversationId: convId, role: "user", content: message },
   });
 
-  const [userContext, history] = await Promise.all([
-    buildUserContext(userId),
-    prisma.chatMessage.findMany({
-      where: { conversationId: convId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: { role: true, content: true },
-    }),
-  ]);
+  let userContext = "";
+  try {
+    userContext = await buildUserContext(userId);
+  } catch (err) {
+    console.error("[AI Chat] buildUserContext failed:", err);
+  }
+
+  const history = await prisma.chatMessage.findMany({
+    where: { conversationId: convId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: { role: true, content: true },
+  });
 
   const systemMsg = buildSystemMessage(userContext);
   const messages: ChatMessage[] = [

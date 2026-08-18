@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { syncGmailAppointments } from "@/lib/gmail-appointments";
 
+export const maxDuration = 60;
+
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id) {
