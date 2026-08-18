@@ -11,11 +11,12 @@ import {
   MapPin,
 } from "lucide-react";
 import { startOfDay, endOfDay, addDays, format } from "date-fns";
+import { userNow } from "@/lib/timezone";
 import Link from "next/link";
 import { AppointmentActions } from "@/components/dashboard/appointment-actions";
 
 function getGreeting() {
-  const hour = new Date().getHours();
+  const hour = userNow().getHours();
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
@@ -34,7 +35,7 @@ export default async function DashboardPage() {
   let appointments: { id: string; title: string; appointmentTime: string | null; location: string | null; status: string; sourceSubject: string }[] = [];
 
   if (userId) {
-    const now = new Date();
+    const now = userNow();
     const todayStart = startOfDay(now);
     const todayEnd = endOfDay(now);
     const weekEnd = endOfDay(addDays(now, 7));

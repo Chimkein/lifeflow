@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { listEvents } from "@/lib/google-calendar";
 import { chatComplete, isOllamaAvailable } from "@/lib/ollama";
 import { startOfDay, endOfDay, format, addDays } from "date-fns";
+import { userNow } from "@/lib/timezone";
 
 function escapeHtml(text: string): string {
   return text
@@ -11,7 +12,7 @@ function escapeHtml(text: string): string {
 }
 
 export async function generateBriefing(userId: string): Promise<string> {
-  const now = new Date();
+  const now = userNow();
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);
   const weekEnd = endOfDay(addDays(now, 7));

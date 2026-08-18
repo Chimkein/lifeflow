@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { fetchRecentEmails, type GmailEmail } from "@/lib/google-gmail";
 import { chatComplete, isOllamaAvailable } from "@/lib/ollama";
 import { format } from "date-fns";
+import { userNow } from "@/lib/timezone";
 
 interface DetectedAppointment {
   emailIndex: number;
@@ -41,7 +42,7 @@ async function detectAppointments(
     )
     .join("\n\n");
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = format(userNow(), "yyyy-MM-dd");
 
   const response = await chatComplete(model, [
     { role: "system", content: DETECTION_PROMPT },

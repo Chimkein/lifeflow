@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { listEvents } from "@/lib/google-calendar";
 import { startOfDay, endOfDay, format } from "date-fns";
+import { userNow } from "@/lib/timezone";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
@@ -103,7 +104,7 @@ export async function chatComplete(
 }
 
 export async function buildUserContext(userId: string): Promise<string> {
-  const now = new Date();
+  const now = userNow();
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);
 
