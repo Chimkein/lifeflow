@@ -13,7 +13,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         params: {
           access_type: "offline",
           prompt: "consent",
-          scope: "openid email profile",
+          scope:
+            "openid email profile https://www.googleapis.com/auth/calendar",
         },
       },
     }),
@@ -25,6 +26,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
+    async signIn({ account }) {
+      if (account?.provider === "google") {
+        await prisma.account.updateMany({
+          where: {
+            provider: account.provider,
+            providerAccountId: account.providerAccountId,
+          },
+          data: {
+            access_token: account.access_token,
+            refresh_token: account.refresh_token,
+            expires_at: account.expires_at,
+            scope: account.scope,
+            id_token: account.id_token,
+          },
+        });
+      }
+      return true;
+    },
     session({ session, user }) {
       session.user.id = user.id;
       return session;
