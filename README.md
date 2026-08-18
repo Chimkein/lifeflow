@@ -156,7 +156,7 @@ lifeflow/
 ## Development Phases
 
 - [x] **Phase 1** — Foundation (Next.js, Auth, DB, Dashboard shell)
-- [ ] Phase 2 — Google Calendar integration
+- [x] **Phase 2** — Google Calendar integration
 - [ ] Phase 3 — Notes & Tasks CRUD
 - [ ] Phase 4 — Telegram bot + daily briefing
 - [ ] Phase 6 — Local AI (Ollama)
