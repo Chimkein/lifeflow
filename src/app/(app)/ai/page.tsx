@@ -146,6 +146,7 @@ export default function AIPage() {
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedContent = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -157,13 +158,24 @@ export default function AIPage() {
 
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
-          const data = JSON.parse(line.slice(6));
+          let data: {
+            conversationId?: string;
+            token?: string;
+            done?: boolean;
+            error?: string;
+          };
+          try {
+            data = JSON.parse(line.slice(6));
+          } catch {
+            continue;
+          }
 
           if (data.conversationId && !activeConvId) {
             setActiveConvId(data.conversationId);
           }
 
           if (data.token) {
+            receivedContent = true;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMsg.id
@@ -178,6 +190,7 @@ export default function AIPage() {
           }
 
           if (data.error) {
+            receivedContent = true;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMsg.id
@@ -187,6 +200,16 @@ export default function AIPage() {
             );
           }
         }
+      }
+
+      if (!receivedContent) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMsg.id
+              ? { ...m, content: "No response from AI. Please try again." }
+              : m
+          )
+        );
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
