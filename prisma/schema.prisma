@@ -26,7 +26,7 @@ model User {
   chatConversations ChatConversation[]
   gmailAppointments GmailAppointment[]
 
-  ollamaModel          String   @default("llama-3.1-8b-instant")
+  ollamaModel          String   @default("openai/gpt-oss-20b")
   aiBriefingEnabled    Boolean  @default(false)
 
   telegramChatId       String?

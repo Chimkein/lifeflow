@@ -161,7 +161,7 @@ async function handleAsk(chatId: number, question: string): Promise<void> {
   try {
     const context = await buildUserContext(user.id);
     const systemMsg = buildSystemMessage(context);
-    const answer = await chatComplete(dbUser?.ollamaModel ?? "llama-3.1-8b-instant", [
+    const answer = await chatComplete(dbUser?.ollamaModel ?? "openai/gpt-oss-20b", [
       { ...systemMsg, content: systemMsg.content + "\n\nRespond using Telegram-safe HTML (<b>, <i>, <code>) only. No markdown. Keep it concise." },
       { role: "user", content: question },
     ]);

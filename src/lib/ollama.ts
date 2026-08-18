@@ -6,10 +6,10 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
 
 const AVAILABLE_MODELS = [
-  { name: "llama-3.1-8b-instant", label: "Llama 3.1 8B" },
-  { name: "llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
-  { name: "gemma2-9b-it", label: "Gemma 2 9B" },
-  { name: "mixtral-8x7b-32768", label: "Mixtral 8x7B" },
+  { name: "openai/gpt-oss-20b", label: "GPT-OSS 20B" },
+  { name: "openai/gpt-oss-120b", label: "GPT-OSS 120B" },
+  { name: "qwen/qwen3.6-27b", label: "Qwen 3.6 27B" },
+  { name: "meta-llama/llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout" },
 ];
 
 export interface ChatMessage {
