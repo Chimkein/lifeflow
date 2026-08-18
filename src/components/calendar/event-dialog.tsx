@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -53,22 +53,9 @@ export function EventDialog({
   onSave,
   onDelete,
 }: EventDialogProps) {
-  const [form, setForm] = useState<EventFormData>({
-    summary: "",
-    description: "",
-    location: "",
-    startDate: format(new Date(), "yyyy-MM-dd"),
-    startTime: "09:00",
-    endDate: format(new Date(), "yyyy-MM-dd"),
-    endTime: "10:00",
-    allDay: false,
-  });
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
+  function getInitialForm(): EventFormData {
     if (event) {
-      setForm({
+      return {
         summary: event.summary,
         description: event.description || "",
         location: event.location || "",
@@ -77,22 +64,27 @@ export function EventDialog({
         endDate: toLocalDate(event.end),
         endTime: event.allDay ? "10:00" : toLocalTime(event.end),
         allDay: event.allDay,
-      });
-    } else if (defaultDate) {
-      const dateStr = format(defaultDate, "yyyy-MM-dd");
-      const hour = defaultHour ?? 9;
-      setForm({
-        summary: "",
-        description: "",
-        location: "",
-        startDate: dateStr,
-        startTime: `${String(hour).padStart(2, "0")}:00`,
-        endDate: dateStr,
-        endTime: `${String(hour + 1).padStart(2, "0")}:00`,
-        allDay: false,
-      });
+      };
     }
-  }, [event, defaultDate, defaultHour]);
+    const dateStr = defaultDate
+      ? format(defaultDate, "yyyy-MM-dd")
+      : format(new Date(), "yyyy-MM-dd");
+    const hour = defaultHour ?? 9;
+    return {
+      summary: "",
+      description: "",
+      location: "",
+      startDate: dateStr,
+      startTime: `${String(hour).padStart(2, "0")}:00`,
+      endDate: dateStr,
+      endTime: `${String(Math.min(hour + 1, 23)).padStart(2, "0")}:00`,
+      allDay: false,
+    };
+  }
+
+  const [form, setForm] = useState<EventFormData>(getInitialForm);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

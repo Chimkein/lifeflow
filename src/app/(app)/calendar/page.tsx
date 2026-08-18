@@ -62,8 +62,39 @@ export default function CalendarPage() {
   }, [currentDate, view]);
 
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { timeMin, timeMax } = getViewRange(currentDate, view);
+        const res = await fetch(
+          `/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`
+        );
+        if (cancelled) return;
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (!res.ok) {
+          if (data.error === "REAUTH_REQUIRED") {
+            setError("Your Google session has expired. Please sign out and sign in again.");
+          } else if (data.error === "NO_GOOGLE_ACCOUNT") {
+            setError("No Google account connected. Please sign out and sign in again.");
+          } else {
+            setError(data.error || "Failed to load events");
+          }
+          return;
+        }
+
+        setEvents(data.events.map(normalizeEvent));
+      } catch {
+        if (!cancelled) setError("Failed to connect to the server");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentDate, view]);
 
   const handleNavigate = (direction: "prev" | "next") => {
     setCurrentDate((d) => navigateDate(d, view, direction));
@@ -204,6 +235,7 @@ export default function CalendarPage() {
       )}
 
       <EventDialog
+        key={editingEvent?.id ?? defaultDate?.toISOString() ?? "new"}
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         event={editingEvent}
