@@ -131,7 +131,7 @@ export default function AIPage() {
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Failed to connect to Ollama" }));
+        const err = await res.json().catch(() => ({ error: "AI unavailable" }));
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMsg.id
@@ -193,7 +193,7 @@ export default function AIPage() {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMsg.id
-              ? { ...m, content: "Failed to connect to Ollama. Make sure it's running." }
+              ? { ...m, content: "Failed to connect to AI. Please try again." }
               : m
           )
         );
@@ -217,10 +217,9 @@ export default function AIPage() {
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
           <WifiOff className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h1 className="mt-4 text-xl font-semibold">Ollama is offline</h1>
+        <h1 className="mt-4 text-xl font-semibold">AI is not available</h1>
         <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-          Start Ollama on your machine to use the AI assistant. Make sure you
-          have a model pulled (e.g. <code className="rounded bg-muted px-1.5 py-0.5">ollama pull llama3.1:8b</code>).
+          The AI assistant is currently unavailable. Check that the Groq API key is configured.
         </p>
         <Button
           variant="outline"
@@ -394,7 +393,7 @@ export default function AIPage() {
             </Button>
           </Card>
           <p className="mt-2 pb-1 text-center text-[10px] text-muted-foreground/50">
-            Powered by Ollama — running locally on your machine
+            Powered by Groq AI
           </p>
         </div>
       </div>
