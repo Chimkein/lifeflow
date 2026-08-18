@@ -139,6 +139,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
+    console.error("[AI Chat] Error:", err);
     const msg = err instanceof Error ? err.message : "AI unavailable";
     return new Response(JSON.stringify({ error: msg }), {
       status: 502,
