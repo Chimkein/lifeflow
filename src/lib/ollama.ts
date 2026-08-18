@@ -36,7 +36,7 @@ export async function chatStream(
       "Content-Type": "application/json",
       Authorization: `Bearer ${GROQ_API_KEY}`,
     },
-    body: JSON.stringify({ model, messages, stream: true }),
+    body: JSON.stringify({ model, messages, stream: true, max_tokens: 1024, temperature: 0.7 }),
     signal,
   });
 
@@ -90,8 +90,8 @@ export async function chatComplete(
       "Content-Type": "application/json",
       Authorization: `Bearer ${GROQ_API_KEY}`,
     },
-    body: JSON.stringify({ model, messages, stream: false }),
-    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({ model, messages, stream: false, max_tokens: 1024, temperature: 0.7 }),
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!res.ok) {

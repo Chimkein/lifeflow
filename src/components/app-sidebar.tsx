@@ -8,7 +8,6 @@ import {
   Calendar,
   StickyNote,
   CheckSquare,
-  Zap,
   Bot,
   Settings,
   LogOut,
@@ -31,7 +30,6 @@ const navItems = [
   { title: "Calendar", href: "/calendar", icon: Calendar },
   { title: "Notes", href: "/notes", icon: StickyNote },
   { title: "Tasks", href: "/tasks", icon: CheckSquare },
-  { title: "Automations", href: "/automations", icon: Zap },
   { title: "AI", href: "/ai", icon: Bot },
   { title: "Settings", href: "/settings", icon: Settings },
 ];

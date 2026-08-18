@@ -50,8 +50,8 @@ export async function POST(req: Request) {
     buildUserContext(userId),
     prisma.chatMessage.findMany({
       where: { conversationId: convId },
-      orderBy: { createdAt: "asc" },
-      take: 50,
+      orderBy: { createdAt: "desc" },
+      take: 20,
       select: { role: true, content: true },
     }),
   ]);
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   const systemMsg = buildSystemMessage(userContext);
   const messages: ChatMessage[] = [
     systemMsg,
-    ...history.map((m: { role: string; content: string }) => ({
+    ...history.reverse().map((m: { role: string; content: string }) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     })),

@@ -13,12 +13,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let update: TelegramUpdate;
   try {
-    const update: TelegramUpdate = await req.json();
-    await handleUpdate(update);
-  } catch (err) {
-    console.error("[Telegram Webhook] Error:", err);
+    update = await req.json();
+  } catch {
+    return NextResponse.json({ ok: true });
   }
+
+  // Process in background — respond to Telegram immediately to avoid timeout
+  void handleUpdate(update).catch((err) => {
+    console.error("[Telegram Webhook] Error:", err);
+  });
 
   return NextResponse.json({ ok: true });
 }

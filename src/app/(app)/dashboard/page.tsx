@@ -332,7 +332,7 @@ export default async function DashboardPage() {
               What do I need to do today?
             </Link>
             <p className="mt-3 text-xs text-muted-foreground/60">
-              AI assistant powered by Ollama — running locally
+              AI assistant powered by Groq
             </p>
           </CardContent>
         </Card>
