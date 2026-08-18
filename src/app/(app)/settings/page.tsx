@@ -50,49 +50,29 @@ export default function SettingsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const res = await fetch("/api/telegram/settings");
-        if (cancelled) return;
-        const data = await res.json();
+      const [telegramRes, statusRes, aiSettingsRes, gmailRes] = await Promise.allSettled([
+        fetch("/api/telegram/settings"),
+        fetch("/api/ai/status"),
+        fetch("/api/ai/settings"),
+        fetch("/api/gmail/settings"),
+      ]);
+      if (cancelled) return;
+
+      if (telegramRes.status === "fulfilled") {
+        const data = await telegramRes.value.json();
         setSettings(data);
         setBriefingTime(data.briefingTime ?? "07:00");
-      } catch {
-        if (!cancelled) setSettings(null);
-      } finally {
-        if (!cancelled) setLoading(false);
       }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [statusRes, settingsRes] = await Promise.all([
-          fetch("/api/ai/status"),
-          fetch("/api/ai/settings"),
-        ]);
-        if (cancelled) return;
-        setOllamaStatus(await statusRes.json());
-        setAiSettings(await settingsRes.json());
-      } catch {
-        // Ollama section will show as unavailable
+      if (statusRes.status === "fulfilled") {
+        setOllamaStatus(await statusRes.value.json());
       }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/gmail/settings");
-        if (cancelled) return;
-        setGmailSettings(await res.json());
-      } catch {
-        // Gmail section will show as unavailable
+      if (aiSettingsRes.status === "fulfilled") {
+        setAiSettings(await aiSettingsRes.value.json());
       }
+      if (gmailRes.status === "fulfilled") {
+        setGmailSettings(await gmailRes.value.json());
+      }
+      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, []);

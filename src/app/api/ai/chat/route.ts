@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     where: { id: userId },
     select: { ollamaModel: true },
   });
-  const model = user?.ollamaModel ?? "llama3.1:8b";
+  const model = user?.ollamaModel ?? "openai/gpt-oss-20b";
 
   let convId = conversationId;
   if (!convId) {

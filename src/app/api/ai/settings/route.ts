@@ -14,7 +14,7 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    ollamaModel: user?.ollamaModel ?? "llama3.1:8b",
+    ollamaModel: user?.ollamaModel ?? "openai/gpt-oss-20b",
     aiBriefingEnabled: user?.aiBriefingEnabled ?? false,
   });
 }
