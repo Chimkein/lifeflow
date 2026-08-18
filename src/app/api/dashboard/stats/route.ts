@@ -39,7 +39,7 @@ export async function GET() {
     }),
   ]);
 
-  const todayTasks = upcomingTasks.filter((t) => {
+  const todayTasks = upcomingTasks.filter((t: { dueAt: Date | null }) => {
     if (!t.dueAt) return false;
     return t.dueAt >= todayStart && t.dueAt <= todayEnd;
   });

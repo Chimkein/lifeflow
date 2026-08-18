@@ -168,7 +168,7 @@ export async function buildUserContext(userId: string): Promise<string> {
   if (notes.length > 0) {
     lines.push("RECENT NOTES:");
     for (const n of notes) {
-      const tags = n.tags.map((t) => `#${t.tag}`).join(" ");
+      const tags = n.tags.map((t: { tag: string }) => `#${t.tag}`).join(" ");
       const preview = n.content.slice(0, 100).replace(/\n/g, " ");
       lines.push(`- "${n.title}" (${format(n.updatedAt, "MMM d")})${tags ? ` ${tags}` : ""}`);
       if (preview) lines.push(`  ${preview}${n.content.length > 100 ? "..." : ""}`);

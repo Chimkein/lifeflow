@@ -158,7 +158,7 @@ export async function generateNoteList(userId: string): Promise<string> {
 
   const lines = [`<b>📝 Recent Notes</b>`, ""];
   for (const n of notes) {
-    const tags = n.tags.map((t) => `#${t.tag}`).join(" ");
+    const tags = n.tags.map((t: { tag: string }) => `#${t.tag}`).join(" ");
     const date = format(n.updatedAt, "MMM d");
     lines.push(`• <b>${escapeHtml(n.title)}</b> — ${date}`);
     if (tags) lines.push(`  ${tags}`);

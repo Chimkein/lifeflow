@@ -106,7 +106,7 @@ export async function syncGmailAppointments(userId: string): Promise<number> {
     },
     select: { gmailMessageId: true },
   });
-  const existingSet = new Set(existingIds.map((e) => e.gmailMessageId));
+  const existingSet = new Set(existingIds.map((e: { gmailMessageId: string }) => e.gmailMessageId));
 
   const newEmails = emails.filter((e) => !existingSet.has(e.messageId));
   if (newEmails.length === 0) {

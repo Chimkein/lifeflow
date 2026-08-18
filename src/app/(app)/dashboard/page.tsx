@@ -75,7 +75,7 @@ export default async function DashboardPage() {
     openTasks = tasks;
     noteCount = notes;
     upcomingCount = upcoming.length;
-    todayTasks = upcoming.filter((t) => {
+    todayTasks = upcoming.filter((t: { dueAt: Date | null }) => {
       if (!t.dueAt) return false;
       return t.dueAt >= todayStart && t.dueAt <= todayEnd;
     });
