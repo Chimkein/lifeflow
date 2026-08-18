@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleUpdate } from "@/lib/telegram-bot";
 import { isBotConfigured, type TelegramUpdate } from "@/lib/telegram";
+import { after } from "next/server";
 
 export async function POST(req: Request) {
   if (!isBotConfigured()) {
@@ -20,9 +21,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Process in background — respond to Telegram immediately to avoid timeout
-  void handleUpdate(update).catch((err) => {
-    console.error("[Telegram Webhook] Error:", err);
+  after(async () => {
+    try {
+      await handleUpdate(update);
+    } catch (err) {
+      console.error("[Telegram Webhook] Error:", err);
+    }
   });
 
   return NextResponse.json({ ok: true });
