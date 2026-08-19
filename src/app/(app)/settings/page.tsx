@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageCircle, Link2, Unlink, Clock, Bell, BellOff, Bot, Cpu, Sparkles, Mail, RefreshCw, LogIn } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { MessageCircle, Link2, Unlink, Clock, Bot, Cpu, Sparkles, Mail, RefreshCw, LogIn, SunMedium, Sun, Moon, Monitor } from "lucide-react";
+import { useTheme } from "next-themes";
+
+const THEME_OPTIONS = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
+] as const;
 
 interface TelegramSettings {
   connected: boolean;
@@ -46,6 +54,12 @@ export default function SettingsPage() {
   const [gmailSettings, setGmailSettings] = useState<GmailSettings | null>(null);
   const [gmailSaving, setGmailSaving] = useState(false);
   const [gmailSyncing, setGmailSyncing] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,16 +226,57 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      {/* Appearance */}
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
+            <SunMedium className="h-5 w-5 text-primary" />
+            Appearance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 rounded-lg bg-muted/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium">Theme</p>
+              <p className="text-xs text-muted-foreground">
+                How LifeFlow looks on this device
+              </p>
+            </div>
+            {mounted ? (
+              <div className="flex w-fit rounded-lg border border-border bg-background p-0.5">
+                {THEME_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setTheme(opt.value)}
+                    aria-pressed={theme === opt.value}
+                    className={`flex min-h-9 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                      theme === opt.value
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <opt.icon className="h-3.5 w-3.5" />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="h-10 w-[220px] animate-pulse rounded-lg bg-muted" />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Telegram Connection */}
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <MessageCircle className="h-5 w-5 text-[#2AABEE]" />
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
+              <MessageCircle className="h-5 w-5 text-info" />
               Telegram
             </CardTitle>
             {settings?.connected ? (
-              <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+              <Badge className="shrink-0 bg-success/15 text-success">
                 Connected
               </Badge>
             ) : (
@@ -231,20 +286,20 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {!settings?.botConfigured ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+            <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
+              <p className="text-sm font-medium text-warning">
                 Bot token not configured
               </p>
-              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+              <p className="mt-1 text-xs text-foreground/80">
                 Create a bot via @BotFather on Telegram, then add the token to
-                your <code className="rounded bg-amber-100 px-1 dark:bg-amber-800">.env</code> file
-                as <code className="rounded bg-amber-100 px-1 dark:bg-amber-800">TELEGRAM_BOT_TOKEN</code> and restart the server.
+                your <code className="rounded bg-warning/15 px-1">.env</code> file
+                as <code className="rounded bg-warning/15 px-1">TELEGRAM_BOT_TOKEN</code> and restart the server.
               </p>
             </div>
           ) : settings?.connected ? (
             <>
               <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-4 py-3">
-                <Link2 className="h-4 w-4 text-emerald-600" />
+                <Link2 className="h-4 w-4 text-success" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">
                     Linked to @{settings.botUsername}
@@ -272,7 +327,7 @@ export default function SettingsPage() {
                 interact with LifeFlow from Telegram.
               </p>
               {linkCode ? (
-                <div className="rounded-lg border border-gold/30 bg-gold/10 p-4 text-center">
+                <div className="rounded-lg border border-primary/30 bg-primary/10 p-4 text-center">
                   <p className="text-xs text-muted-foreground">
                     Send this code to{" "}
                     <strong>@{settings?.botUsername}</strong> on Telegram:
@@ -302,13 +357,13 @@ export default function SettingsPage() {
       {/* AI */}
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Bot className="h-5 w-5 text-gold" />
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
+              <Bot className="h-5 w-5 text-primary" />
               AI Assistant
             </CardTitle>
             {ollamaStatus?.available ? (
-              <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+              <Badge className="shrink-0 bg-success/15 text-success">
                 Connected
               </Badge>
             ) : (
@@ -318,20 +373,20 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {!ollamaStatus?.available ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+            <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
+              <p className="text-sm font-medium text-warning">
                 AI not configured
               </p>
-              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+              <p className="mt-1 text-xs text-foreground/80">
                 Add your Groq API key to the{" "}
-                <code className="rounded bg-amber-100 px-1 dark:bg-amber-800">.env</code> file
-                as <code className="rounded bg-amber-100 px-1 dark:bg-amber-800">GROQ_API_KEY</code> and redeploy.
+                <code className="rounded bg-warning/15 px-1">.env</code> file
+                as <code className="rounded bg-warning/15 px-1">GROQ_API_KEY</code> and redeploy.
               </p>
             </div>
           ) : (
             <>
               <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-4 py-3">
-                <Cpu className="h-4 w-4 text-emerald-600" />
+                <Cpu className="h-4 w-4 text-success" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">
                     {ollamaStatus.models.length} model{ollamaStatus.models.length === 1 ? "" : "s"} available
@@ -347,7 +402,7 @@ export default function SettingsPage() {
                   onValueChange={(v) => { if (v) handleSaveModel(v); }}
                   disabled={aiSaving}
                 >
-                  <SelectTrigger className="max-w-[280px]">
+                  <SelectTrigger className="w-full sm:max-w-[280px]">
                     <SelectValue placeholder="Select a model" />
                   </SelectTrigger>
                   <SelectContent>
@@ -359,9 +414,9 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+              <div className="flex flex-col gap-3 rounded-lg bg-muted/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-gold" />
+                  <Sparkles className="h-4 w-4 text-primary" />
                   <div>
                     <p className="text-sm font-medium">AI-enhanced briefings</p>
                     <p className="text-xs text-muted-foreground">
@@ -369,21 +424,12 @@ export default function SettingsPage() {
                     </p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleToggleAiBriefing}
+                <Switch
+                  checked={aiSettings?.aiBriefingEnabled ?? false}
+                  onCheckedChange={handleToggleAiBriefing}
                   disabled={aiSaving}
-                >
-                  {aiSettings?.aiBriefingEnabled ? (
-                    <>
-                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                      Enabled
-                    </>
-                  ) : (
-                    "Disabled"
-                  )}
-                </Button>
+                  aria-label="AI-enhanced briefings"
+                />
               </div>
             </>
           )}
@@ -393,14 +439,14 @@ export default function SettingsPage() {
       {/* Gmail Integration */}
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Mail className="h-5 w-5 text-red-500" />
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
+              <Mail className="h-5 w-5 text-muted-foreground" />
               Gmail
             </CardTitle>
             {gmailSettings?.hasGmailScope ? (
               gmailSettings.gmailSyncEnabled ? (
-                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <Badge className="shrink-0 bg-success/15 text-success">
                   Active
                 </Badge>
               ) : (
@@ -414,11 +460,11 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           {!gmailSettings?.hasGmailScope ? (
             <div className="space-y-3">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
+                <p className="text-sm font-medium text-warning">
                   Gmail access not granted
                 </p>
-                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                <p className="mt-1 text-xs text-foreground/80">
                   Sign out and sign back in to grant Gmail read access. This lets
                   LifeFlow scan your inbox for appointments.
                 </p>
@@ -433,9 +479,9 @@ export default function SettingsPage() {
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+              <div className="flex flex-col gap-3 rounded-lg bg-muted/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-red-500" />
+                  <Mail className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Appointment detection</p>
                     <p className="text-xs text-muted-foreground">
@@ -443,17 +489,15 @@ export default function SettingsPage() {
                     </p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleToggleGmailSync}
+                <Switch
+                  checked={gmailSettings.gmailSyncEnabled}
+                  onCheckedChange={handleToggleGmailSync}
                   disabled={gmailSaving}
-                >
-                  {gmailSettings.gmailSyncEnabled ? "Enabled" : "Disabled"}
-                </Button>
+                  aria-label="Appointment detection"
+                />
               </div>
               {gmailSettings.gmailSyncEnabled && (
-                <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+                <div className="flex flex-col gap-3 rounded-lg bg-muted/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-medium">Sync now</p>
                     <p className="text-xs text-muted-foreground">
@@ -481,29 +525,17 @@ export default function SettingsPage() {
       {settings?.connected && (
         <Card className="border-none shadow-sm">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Clock className="h-5 w-5 text-gold" />
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
+                <Clock className="h-5 w-5 text-primary" />
                 Daily Briefing
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleToggleBriefing}
+              <Switch
+                checked={settings.briefingEnabled}
+                onCheckedChange={handleToggleBriefing}
                 disabled={saving}
-              >
-                {settings.briefingEnabled ? (
-                  <>
-                    <Bell className="mr-1.5 h-3.5 w-3.5" />
-                    Enabled
-                  </>
-                ) : (
-                  <>
-                    <BellOff className="mr-1.5 h-3.5 w-3.5" />
-                    Disabled
-                  </>
-                )}
-              </Button>
+                aria-label="Daily briefing"
+              />
             </div>
           </CardHeader>
           <CardContent>

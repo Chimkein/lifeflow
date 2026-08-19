@@ -1,7 +1,11 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SessionProvider } from "@/components/session-provider";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
 export default async function AppLayout({
@@ -10,18 +14,23 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  if (!session) redirect("/login");
+  // DEV_BYPASS_AUTH lets the UI render without a session for local layout
+  // work; the NODE_ENV guard keeps it inert in production builds.
+  const devBypass =
+    process.env.NODE_ENV === "development" &&
+    process.env.DEV_BYPASS_AUTH === "1";
+  if (!session && !devBypass) redirect("/login");
 
   return (
     <SessionProvider>
       <SidebarProvider>
         <AppSidebar />
-        <main className="flex flex-1 flex-col">
-          <header className="flex h-14 items-center gap-4 border-b border-border px-4 lg:px-6">
+        <SidebarInset className="min-w-0">
+          <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur-sm lg:px-6">
             <SidebarTrigger />
           </header>
-          <div className="flex-1 p-4 lg:p-6">{children}</div>
-        </main>
+          <div className="flex flex-1 flex-col p-4 lg:p-6">{children}</div>
+        </SidebarInset>
       </SidebarProvider>
     </SessionProvider>
   );
