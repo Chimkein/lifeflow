@@ -34,11 +34,13 @@ export default function CalendarPage() {
   useEffect(() => {
     if (appliedMobileDefault.current) return;
     appliedMobileDefault.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mobile default; effect keeps SSR and first client render in sync
     if (window.innerWidth < 768) setView("agenda");
   }, []);
 
   // Week view is desktop-only; fall back to the day grid when narrow.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- week view is desktop-only; collapse to day when the viewport becomes narrow
     if (isMobile && view === "week") setView("day");
   }, [isMobile, view]);
 

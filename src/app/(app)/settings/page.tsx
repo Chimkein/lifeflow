@@ -58,6 +58,7 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- next-themes hydration guard; the resolved theme is only known after mount
     setMounted(true);
   }, []);
 
@@ -471,6 +472,7 @@ export default function SettingsPage() {
               </div>
               <Button
                 size="sm"
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full navigation to the NextAuth sign-in endpoint (starts the OAuth flow), not client-side page nav
                 onClick={() => window.location.href = "/api/auth/signin"}
               >
                 <LogIn className="mr-1.5 h-3.5 w-3.5" />

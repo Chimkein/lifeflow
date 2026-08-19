@@ -2,6 +2,7 @@ import {
   sendMessage,
   setMyCommands,
   setWebhook,
+  getWebhookInfo,
   isBotConfigured,
   type TelegramUpdate,
 } from "@/lib/telegram";
@@ -36,6 +37,21 @@ export async function setupWebhook(): Promise<void> {
 
   const protocol = baseUrl.startsWith("http") ? "" : "https://";
   const webhookUrl = `${protocol}${baseUrl}/api/telegram/webhook`;
+
+  // Telegram only accepts HTTPS webhooks; a localhost/http base (e.g. a stray
+  // dev NEXTAUTH_URL) can never register, so don't spam the API with it.
+  if (!webhookUrl.startsWith("https://")) {
+    console.log(`[Telegram] Skipping webhook setup, non-HTTPS URL: ${webhookUrl}`);
+    return;
+  }
+
+  // This runs on every serverless cold start. setWebhook is rate-limited, so
+  // only (re)register when the target actually differs — otherwise a cold start
+  // storm gets throttled and logs spurious failures.
+  const info = await getWebhookInfo();
+  if (info?.url === webhookUrl) {
+    return;
+  }
 
   await setMyCommands();
   const ok = await setWebhook(webhookUrl);

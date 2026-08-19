@@ -83,10 +83,26 @@ export async function setWebhook(url: string): Promise<boolean> {
       }),
     });
     const data = await res.json();
+    if (!data.ok) {
+      // Surface Telegram's actual reason (e.g. rate limit, bad URL) instead of
+      // a bare "failed".
+      console.error("[Telegram] setWebhook rejected:", data.description ?? data);
+    }
     return data.ok === true;
   } catch (err) {
     console.error("[Telegram] setWebhook error:", err);
     return false;
+  }
+}
+
+export async function getWebhookInfo(): Promise<{ url?: string } | null> {
+  try {
+    const res = await fetch(apiUrl("getWebhookInfo"));
+    const data = await res.json();
+    return data.ok ? data.result : null;
+  } catch (err) {
+    console.error("[Telegram] getWebhookInfo error:", err);
+    return null;
   }
 }
 
