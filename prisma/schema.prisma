@@ -57,9 +57,11 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([provider, providerAccountId])
+  @@index([userId, provider])
 }
 
 model Session {
+  id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
@@ -67,6 +69,8 @@ model Session {
   updatedAt    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -183,6 +187,7 @@ model TaskNote {
   note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
   @@id([taskId, noteId])
+  @@index([noteId])
 }
 
 model EventTask {
