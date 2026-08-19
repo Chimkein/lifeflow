@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateAIBriefing } from "@/lib/briefing";
 import { sendMessage } from "@/lib/telegram";
-import { userNow } from "@/lib/timezone";
+import { zonedHm } from "@/lib/timezone";
 
 export const maxDuration = 60;
 
@@ -13,8 +13,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const now = userNow();
-  const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const currentTime = zonedHm(new Date());
 
   const users = await prisma.user.findMany({
     where: {

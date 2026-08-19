@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { startOfDay, endOfDay } from "date-fns";
+import { startOfZonedDay, endOfZonedDay } from "@/lib/timezone";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -13,8 +13,8 @@ export async function GET(req: NextRequest) {
   const dateParam = searchParams.get("date");
 
   const targetDate = dateParam ? new Date(dateParam) : new Date();
-  const dayStart = startOfDay(targetDate);
-  const dayEnd = endOfDay(targetDate);
+  const dayStart = startOfZonedDay(targetDate);
+  const dayEnd = endOfZonedDay(targetDate);
 
   const appointments = await prisma.gmailAppointment.findMany({
     where: {
