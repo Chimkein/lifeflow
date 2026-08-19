@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { encryptToken, decryptToken } from "@/lib/crypto";
 
 interface GoogleTokenResponse {
   access_token: string;
@@ -15,12 +16,15 @@ export async function getValidAccessToken(userId: string): Promise<string> {
     throw new Error("NO_GOOGLE_ACCOUNT");
   }
 
+  const accessToken = decryptToken(account.access_token);
+  const refreshToken = decryptToken(account.refresh_token);
+
   const now = Math.floor(Date.now() / 1000);
   if (account.expires_at && account.expires_at > now + 60) {
-    return account.access_token!;
+    return accessToken!;
   }
 
-  if (!account.refresh_token) {
+  if (!refreshToken) {
     throw new Error("NO_REFRESH_TOKEN");
   }
 
@@ -30,7 +34,7 @@ export async function getValidAccessToken(userId: string): Promise<string> {
     body: new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID!,
       client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: account.refresh_token,
+      refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
   });
@@ -53,7 +57,7 @@ export async function getValidAccessToken(userId: string): Promise<string> {
       },
     },
     data: {
-      access_token: tokens.access_token,
+      access_token: encryptToken(tokens.access_token),
       expires_at: now + tokens.expires_in,
     },
   });

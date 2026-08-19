@@ -10,13 +10,18 @@ import {
   Mail,
   MapPin,
 } from "lucide-react";
-import { startOfDay, endOfDay, addDays, format } from "date-fns";
-import { userNow } from "@/lib/timezone";
+import {
+  zonedParts,
+  startOfZonedDay,
+  endOfZonedDay,
+  addZonedDays,
+  formatInTZ,
+} from "@/lib/timezone";
 import Link from "next/link";
 import { AppointmentActions } from "@/components/dashboard/appointment-actions";
 
 function getGreeting() {
-  const hour = userNow().getHours();
+  const hour = zonedParts(new Date()).hour;
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
@@ -35,10 +40,10 @@ export default async function DashboardPage() {
   let appointments: { id: string; title: string; appointmentTime: string | null; location: string | null; status: string; sourceSubject: string }[] = [];
 
   if (userId) {
-    const now = userNow();
-    const todayStart = startOfDay(now);
-    const todayEnd = endOfDay(now);
-    const weekEnd = endOfDay(addDays(now, 7));
+    const now = new Date();
+    const todayStart = startOfZonedDay(now);
+    const todayEnd = endOfZonedDay(now);
+    const weekEnd = endOfZonedDay(addZonedDays(now, 7));
 
     const [tasks, notes, upcoming, recent, gmailAppts] = await Promise.all([
       prisma.task.count({
@@ -291,7 +296,7 @@ export default async function DashboardPage() {
                     <p className="text-sm font-medium">{note.title}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
-                        {format(note.updatedAt, "MMM d")}
+                        {formatInTZ(note.updatedAt, { month: "short", day: "numeric" })}
                       </span>
                       {note.tags.slice(0, 3).map((t) => (
                         <Badge

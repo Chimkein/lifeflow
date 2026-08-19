@@ -117,20 +117,24 @@ export async function POST(req: Request) {
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         } catch (err) {
-          if (fullResponse) {
-            await prisma.chatMessage.create({
-              data: {
-                conversationId: convId,
-                role: "assistant",
-                content: fullResponse,
-              },
-            });
+          try {
+            if (fullResponse) {
+              await prisma.chatMessage.create({
+                data: {
+                  conversationId: convId,
+                  role: "assistant",
+                  content: fullResponse,
+                },
+              });
+            }
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ error: "Stream interrupted" })}\n\n`
+              )
+            );
+          } catch (recoveryErr) {
+            console.error("[AI Chat] Recovery after stream error failed:", recoveryErr);
           }
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ error: "Stream interrupted" })}\n\n`
-            )
-          );
         } finally {
           controller.close();
         }

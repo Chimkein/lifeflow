@@ -16,6 +16,7 @@ import {
   WifiOff,
   User,
   Sparkles,
+  Square,
 } from "lucide-react";
 
 interface Message {
@@ -58,8 +59,15 @@ export default function AIPage() {
   }, []);
 
   useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
+    // Inlined (rather than calling loadConversations directly) so the
+    // setState call is wrapped in its own async scope, matching the
+    // pattern above — satisfies react-hooks/set-state-in-effect.
+    (async () => {
+      const res = await fetch("/api/ai/conversations");
+      const data = await res.json();
+      setConversations(data);
+    })();
+  }, []);
 
   const loadConversation = async (id: string) => {
     setActiveConvId(id);
@@ -103,6 +111,12 @@ export default function AIPage() {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || streaming) return;
@@ -123,6 +137,7 @@ export default function AIPage() {
     setMessages((prev) => [...prev, assistantMsg]);
     setStreaming(true);
 
+    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -232,6 +247,10 @@ export default function AIPage() {
       setStreaming(false);
       abortRef.current = null;
     }
+  };
+
+  const handleStop = () => {
+    abortRef.current?.abort();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -427,11 +446,12 @@ export default function AIPage() {
             <Button
               size="icon"
               className="h-9 w-9 shrink-0 rounded-xl"
-              onClick={handleSend}
-              disabled={!input.trim() || streaming}
+              onClick={streaming ? handleStop : handleSend}
+              disabled={!streaming && !input.trim()}
+              title={streaming ? "Stop" : "Send"}
             >
               {streaming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Square className="h-4 w-4" />
               ) : (
                 <Send className="h-4 w-4" />
               )}

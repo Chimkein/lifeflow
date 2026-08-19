@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db";
 import { listEvents } from "@/lib/google-calendar";
-import { startOfDay, endOfDay, format } from "date-fns";
-import { userNow } from "@/lib/timezone";
+import { startOfZonedDay, endOfZonedDay, formatInTZ } from "@/lib/timezone";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
@@ -104,11 +103,11 @@ export async function chatComplete(
 }
 
 export async function buildUserContext(userId: string): Promise<string> {
-  const now = userNow();
-  const todayStart = startOfDay(now);
-  const todayEnd = endOfDay(now);
+  const now = new Date();
+  const todayStart = startOfZonedDay(now);
+  const todayEnd = endOfZonedDay(now);
 
-  const [tasks, notes, events, gmailAppts] = await Promise.all([
+  const [tasks, notes, calendarResult, gmailAppts] = await Promise.all([
     prisma.task.findMany({
       where: { userId, status: { not: "completed" } },
       orderBy: [{ priority: "desc" }, { dueAt: "asc" }],
@@ -131,15 +130,22 @@ export async function buildUserContext(userId: string): Promise<string> {
     }),
   ]);
 
+  const { events, reauthRequired: calendarReauthRequired } = calendarResult;
+
   const lines: string[] = [];
-  lines.push(`Current date and time: ${format(now, "EEEE, MMMM d, yyyy 'at' h:mm a")}`);
+  lines.push(
+    `Current date and time: ${formatInTZ(now, { weekday: "long", month: "long", day: "numeric", year: "numeric" })} at ${formatInTZ(now, { hour: "numeric", minute: "2-digit", hour12: true })}`
+  );
   lines.push("");
 
-  if (events.length > 0) {
+  if (calendarReauthRequired) {
+    lines.push("CALENDAR: not connected (user needs to reconnect Google in Settings)");
+    lines.push("");
+  } else if (events.length > 0) {
     lines.push("TODAY'S CALENDAR EVENTS:");
     for (const e of events) {
       const time = e.start.dateTime
-        ? format(new Date(e.start.dateTime), "h:mm a")
+        ? formatInTZ(new Date(e.start.dateTime), { hour: "numeric", minute: "2-digit", hour12: true })
         : "All day";
       lines.push(`- ${time}: ${e.summary ?? "(No title)"}`);
     }
@@ -160,7 +166,7 @@ export async function buildUserContext(userId: string): Promise<string> {
   if (tasks.length > 0) {
     lines.push("OPEN TASKS:");
     for (const t of tasks) {
-      const due = t.dueAt ? ` (due ${format(t.dueAt, "MMM d")})` : "";
+      const due = t.dueAt ? ` (due ${formatInTZ(t.dueAt, { month: "short", day: "numeric" })})` : "";
       lines.push(`- [${t.priority}] ${t.title}${due}`);
     }
     lines.push("");
@@ -171,7 +177,7 @@ export async function buildUserContext(userId: string): Promise<string> {
     for (const n of notes) {
       const tags = n.tags.map((t: { tag: string }) => `#${t.tag}`).join(" ");
       const preview = n.content.slice(0, 100).replace(/\n/g, " ");
-      lines.push(`- "${n.title}" (${format(n.updatedAt, "MMM d")})${tags ? ` ${tags}` : ""}`);
+      lines.push(`- "${n.title}" (${formatInTZ(n.updatedAt, { month: "short", day: "numeric" })})${tags ? ` ${tags}` : ""}`);
       if (preview) lines.push(`  ${preview}${n.content.length > 100 ? "..." : ""}`);
     }
   }
@@ -190,14 +196,26 @@ export function buildSystemMessage(userContext: string): ChatMessage {
   };
 }
 
+const REAUTH_ERRORS = new Set(["REAUTH_REQUIRED", "NO_REFRESH_TOKEN", "NO_GOOGLE_ACCOUNT"]);
+
+type CalendarFetchResult = {
+  events: { summary?: string; start: { dateTime?: string; date?: string } }[];
+  reauthRequired: boolean;
+};
+
 async function fetchCalendarEvents(
   userId: string,
   start: Date,
   end: Date
-): Promise<{ summary?: string; start: { dateTime?: string; date?: string } }[]> {
+): Promise<CalendarFetchResult> {
   try {
-    return await listEvents(userId, start.toISOString(), end.toISOString());
-  } catch {
-    return [];
+    const events = await listEvents(userId, start.toISOString(), end.toISOString());
+    return { events, reauthRequired: false };
+  } catch (err) {
+    const reauthRequired =
+      err instanceof Error &&
+      (REAUTH_ERRORS.has(err.message) ||
+        /Calendar API error (401|403)/.test(err.message));
+    return { events: [], reauthRequired };
   }
 }

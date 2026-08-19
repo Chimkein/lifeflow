@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/db";
 import { listEvents } from "@/lib/google-calendar";
 import { chatComplete, isOllamaAvailable } from "@/lib/ollama";
-import { startOfDay, endOfDay, format, addDays } from "date-fns";
-import { userNow } from "@/lib/timezone";
+import { startOfZonedDay, endOfZonedDay, addZonedDays, formatInTZ } from "@/lib/timezone";
 
 function escapeHtml(text: string): string {
   return text
@@ -12,12 +11,12 @@ function escapeHtml(text: string): string {
 }
 
 export async function generateBriefing(userId: string): Promise<string> {
-  const now = userNow();
-  const todayStart = startOfDay(now);
-  const todayEnd = endOfDay(now);
-  const weekEnd = endOfDay(addDays(now, 7));
+  const now = new Date();
+  const todayStart = startOfZonedDay(now);
+  const todayEnd = endOfZonedDay(now);
+  const weekEnd = endOfZonedDay(addZonedDays(now, 7));
 
-  const [openTasks, dueTodayTasks, dueWeekTasks, recentNotes, events, gmailAppts] =
+  const [openTasks, dueTodayTasks, dueWeekTasks, recentNotes, calendarResult, gmailAppts] =
     await Promise.all([
       prisma.task.count({
         where: { userId, status: { not: "completed" } },
@@ -56,16 +55,21 @@ export async function generateBriefing(userId: string): Promise<string> {
       }),
     ]);
 
+  const { events, reauthRequired: calendarReauthRequired } = calendarResult;
+
   const lines: string[] = [];
-  lines.push(`<b>☀️ Daily Briefing — ${format(now, "EEEE, MMM d")}</b>`);
+  lines.push(`<b>☀️ Daily Briefing — ${formatInTZ(now, { weekday: "long", month: "short", day: "numeric" })}</b>`);
   lines.push("");
 
   // Calendar events
-  if (events.length > 0) {
+  if (calendarReauthRequired) {
+    lines.push("⚠️ <b>Calendar disconnected — reconnect in Settings</b>");
+    lines.push("");
+  } else if (events.length > 0) {
     lines.push("<b>📅 Today's Events</b>");
     for (const e of events) {
       const time = e.start.dateTime
-        ? format(new Date(e.start.dateTime), "h:mm a")
+        ? formatInTZ(new Date(e.start.dateTime), { hour: "numeric", minute: "2-digit", hour12: true })
         : "All day";
       lines.push(`  • ${time} — ${escapeHtml(e.summary ?? "(No title)")}`);
     }
@@ -98,7 +102,7 @@ export async function generateBriefing(userId: string): Promise<string> {
   if (dueWeekTasks.length > 0) {
     lines.push("<b>📋 Coming Up</b>");
     for (const t of dueWeekTasks) {
-      const day = format(t.dueAt!, "EEE, MMM d");
+      const day = formatInTZ(t.dueAt!, { weekday: "short", month: "short", day: "numeric" });
       lines.push(`  • ${escapeHtml(t.title)} — ${day}`);
     }
     lines.push("");
@@ -141,7 +145,7 @@ export async function generateTaskList(userId: string): Promise<string> {
   const lines = [`<b>✅ Open Tasks (${tasks.length})</b>`, ""];
   for (const t of tasks) {
     const icon = priorityIcon(t.priority);
-    const due = t.dueAt ? ` — ${format(t.dueAt, "MMM d")}` : "";
+    const due = t.dueAt ? ` — ${formatInTZ(t.dueAt, { month: "short", day: "numeric" })}` : "";
     lines.push(`${icon} ${escapeHtml(t.title)}${due}`);
   }
   return lines.join("\n");
@@ -160,7 +164,7 @@ export async function generateNoteList(userId: string): Promise<string> {
   const lines = [`<b>📝 Recent Notes</b>`, ""];
   for (const n of notes) {
     const tags = n.tags.map((t: { tag: string }) => `#${t.tag}`).join(" ");
-    const date = format(n.updatedAt, "MMM d");
+    const date = formatInTZ(n.updatedAt, { month: "short", day: "numeric" });
     lines.push(`• <b>${escapeHtml(n.title)}</b> — ${date}`);
     if (tags) lines.push(`  ${tags}`);
   }
@@ -216,14 +220,26 @@ export async function generateAIBriefing(userId: string): Promise<string> {
   }
 }
 
+const REAUTH_ERRORS = new Set(["REAUTH_REQUIRED", "NO_REFRESH_TOKEN", "NO_GOOGLE_ACCOUNT"]);
+
+type CalendarFetchResult = {
+  events: { summary?: string; start: { dateTime?: string; date?: string } }[];
+  reauthRequired: boolean;
+};
+
 async function fetchCalendarEvents(
   userId: string,
   start: Date,
   end: Date
-): Promise<{ summary?: string; start: { dateTime?: string; date?: string } }[]> {
+): Promise<CalendarFetchResult> {
   try {
-    return await listEvents(userId, start.toISOString(), end.toISOString());
-  } catch {
-    return [];
+    const events = await listEvents(userId, start.toISOString(), end.toISOString());
+    return { events, reauthRequired: false };
+  } catch (err) {
+    const reauthRequired =
+      err instanceof Error &&
+      (REAUTH_ERRORS.has(err.message) ||
+        /Calendar API error (401|403)/.test(err.message));
+    return { events: [], reauthRequired };
   }
 }
