@@ -156,7 +156,7 @@ export function TaskDialog({
             className="resize-none"
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
                 Priority
@@ -169,7 +169,7 @@ export function TaskDialog({
                     onClick={() =>
                       setForm((f) => ({ ...f, priority: p.value }))
                     }
-                    className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
+                    className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg pointer-coarse:min-h-11 ${
                       form.priority === p.value
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-muted"

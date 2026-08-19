@@ -9,7 +9,7 @@ export default async function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-8 px-4">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gold text-2xl font-bold text-gold-foreground">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground">
             L
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">LifeFlow</h1>

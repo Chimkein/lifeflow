@@ -124,13 +124,12 @@ export function LinkPicker({
                 setSearching(false);
                 setQuery("");
                 setResults([]);
-                setResults([]);
               }
             }}
             className="h-8 pl-8 text-xs"
           />
           {(results.length > 0 || loading) && (
-            <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
+            <div className="mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-md">
               {loading ? (
                 <div className="px-3 py-2 text-xs text-muted-foreground">
                   Searching...
@@ -141,12 +140,12 @@ export function LinkPicker({
                     key={item.id}
                     type="button"
                     onClick={() => handleLink(item.id)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted transition-colors first:rounded-t-md last:rounded-b-md"
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-muted transition-colors first:rounded-t-md last:rounded-b-md"
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <span className="truncate">{item.title}</span>
                     {item.priority && (
-                      <Badge variant="secondary" className="ml-auto text-[10px] shrink-0">
+                      <Badge variant="secondary" className="ml-auto text-xs shrink-0">
                         {item.priority}
                       </Badge>
                     )}
@@ -168,14 +167,15 @@ export function LinkPicker({
               <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="flex-1 truncate text-xs">{item.title}</span>
               {item.status === "completed" && (
-                <Badge variant="secondary" className="text-[10px] shrink-0">
+                <Badge variant="secondary" className="text-xs shrink-0">
                   done
                 </Badge>
               )}
               <button
                 type="button"
                 onClick={() => onUnlink(item.id)}
-                className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                aria-label={`Unlink ${item.title}`}
+                className="relative rounded-full p-1 after:absolute after:-inset-2 hover:bg-muted-foreground/20"
               >
                 <X className="h-3 w-3 text-muted-foreground" />
               </button>

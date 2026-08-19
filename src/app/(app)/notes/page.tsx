@@ -140,13 +140,12 @@ export default function NotesPage() {
               setShowArchived(!showArchived);
               setActiveTag(null);
             }}
-            className="h-8"
           >
             <Archive className="mr-1.5 h-3.5 w-3.5" />
             Archived
           </Button>
           {!showArchived && (
-            <Button size="sm" onClick={handleNewNote} className="h-8">
+            <Button size="sm" onClick={handleNewNote}>
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               New Note
             </Button>

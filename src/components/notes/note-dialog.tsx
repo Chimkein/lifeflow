@@ -208,7 +208,8 @@ export function NoteDialog({
                     <button
                       type="button"
                       onClick={() => removeTag(tag)}
-                      className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                      aria-label={`Remove tag ${tag}`}
+                      className="relative rounded-full p-0.5 after:absolute after:-inset-2 hover:bg-muted-foreground/20"
                     >
                       <X className="h-3 w-3" />
                     </button>

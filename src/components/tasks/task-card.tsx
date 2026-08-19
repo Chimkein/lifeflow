@@ -13,17 +13,17 @@ interface TaskCardProps {
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  medium:
-    "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  urgent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  low: "bg-muted text-muted-foreground",
+  medium: "bg-info/15 text-info",
+  high: "bg-warning/15 text-warning",
+  urgent: "bg-destructive/15 text-destructive",
 };
 
 export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
   const isCompleted = task.status === "completed";
   const dueDate = task.dueAt ? new Date(task.dueAt) : null;
   const isOverdue = dueDate && !isCompleted && isPast(dueDate) && !isToday(dueDate);
+  const isDueToday = dueDate && !isCompleted && isToday(dueDate);
 
   return (
     <Card className="border-none shadow-sm transition-shadow hover:shadow-md">
@@ -33,10 +33,11 @@ export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
             e.stopPropagation();
             onToggle(task);
           }}
-          className="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-gold"
+          aria-label={isCompleted ? "Mark as not completed" : "Mark as completed"}
+          className="relative mt-0.5 shrink-0 text-muted-foreground transition-colors after:absolute after:-inset-2 hover:text-primary"
         >
           {isCompleted ? (
-            <CheckCircle2 className="h-5 w-5 text-gold" />
+            <CheckCircle2 className="h-5 w-5 text-success" />
           ) : (
             <Circle className="h-5 w-5" />
           )}
@@ -58,20 +59,26 @@ export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
           <div className="mt-2 flex items-center gap-2">
             <Badge
               variant="secondary"
-              className={`text-[10px] ${PRIORITY_COLORS[task.priority] ?? ""}`}
+              className={`text-xs ${PRIORITY_COLORS[task.priority] ?? ""}`}
             >
               {task.priority}
             </Badge>
             {dueDate && (
               <span
-                className={`text-[10px] ${isOverdue ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"}`}
+                className={`text-xs ${
+                  isOverdue
+                    ? "font-medium text-destructive"
+                    : isDueToday
+                      ? "font-medium text-warning"
+                      : "text-muted-foreground"
+                }`}
               >
-                {isOverdue ? "Overdue: " : ""}
+                {isOverdue ? "Overdue: " : isDueToday ? "Due today: " : ""}
                 {format(dueDate, "MMM d")}
               </span>
             )}
             {(task.taskNotes?.length ?? 0) > 0 && (
-              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                 <Link2 className="h-3 w-3" />
                 {task.taskNotes!.length}
               </span>

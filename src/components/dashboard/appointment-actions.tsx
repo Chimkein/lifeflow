@@ -19,9 +19,7 @@ export function AppointmentActions({
 
   if (status === "confirmed") {
     return (
-      <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-        Confirmed
-      </span>
+      <span className="text-xs font-medium text-success">Confirmed</span>
     );
   }
 
@@ -47,8 +45,9 @@ export function AppointmentActions({
     <div className="flex items-center gap-1">
       <Button
         variant="ghost"
-        size="icon"
-        className="h-6 w-6 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-900/20"
+        size="icon-sm"
+        aria-label="Confirm appointment"
+        className="text-success hover:bg-success/10 hover:text-success"
         onClick={() => handleAction("confirmed")}
         disabled={updating}
       >
@@ -56,8 +55,9 @@ export function AppointmentActions({
       </Button>
       <Button
         variant="ghost"
-        size="icon"
-        className="h-6 w-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        size="icon-sm"
+        aria-label="Dismiss appointment"
+        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         onClick={() => handleAction("dismissed")}
         disabled={updating}
       >

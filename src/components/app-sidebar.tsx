@@ -24,6 +24,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -43,7 +44,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gold text-sm font-bold text-gold-foreground">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
             L
           </div>
           <span className="text-lg font-semibold tracking-tight">LifeFlow</span>
@@ -75,7 +76,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
             <AvatarImage src={user?.image ?? undefined} />
-            <AvatarFallback className="bg-gold/20 text-sm font-medium">
+            <AvatarFallback className="bg-primary/15 text-sm font-medium">
               {user?.name?.charAt(0) ?? "?"}
             </AvatarFallback>
           </Avatar>
@@ -87,12 +88,15 @@ export function AppSidebar() {
               {user?.email ?? ""}
             </span>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Sign out"
+            className="text-muted-foreground hover:text-foreground"
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <LogOut className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>
