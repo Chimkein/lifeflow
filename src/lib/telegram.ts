@@ -44,7 +44,27 @@ export async function sendMessage({
       }),
     });
     const data = await res.json();
-    return data.ok === true;
+    if (data.ok === true) return true;
+
+    if (parseMode) {
+      console.warn(
+        "[Telegram] sendMessage failed with parse_mode, retrying as plain text:",
+        data,
+      );
+      const retryRes = await fetch(apiUrl("sendMessage"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+          disable_notification: disableNotification,
+        }),
+      });
+      const retryData = await retryRes.json();
+      return retryData.ok === true;
+    }
+
+    return false;
   } catch (err) {
     console.error("[Telegram] sendMessage error:", err);
     return false;

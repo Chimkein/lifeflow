@@ -107,7 +107,7 @@ export async function buildUserContext(userId: string): Promise<string> {
   const todayStart = startOfZonedDay(now);
   const todayEnd = endOfZonedDay(now);
 
-  const [tasks, notes, events, gmailAppts] = await Promise.all([
+  const [tasks, notes, calendarResult, gmailAppts] = await Promise.all([
     prisma.task.findMany({
       where: { userId, status: { not: "completed" } },
       orderBy: [{ priority: "desc" }, { dueAt: "asc" }],
@@ -130,13 +130,18 @@ export async function buildUserContext(userId: string): Promise<string> {
     }),
   ]);
 
+  const { events, reauthRequired: calendarReauthRequired } = calendarResult;
+
   const lines: string[] = [];
   lines.push(
     `Current date and time: ${formatInTZ(now, { weekday: "long", month: "long", day: "numeric", year: "numeric" })} at ${formatInTZ(now, { hour: "numeric", minute: "2-digit", hour12: true })}`
   );
   lines.push("");
 
-  if (events.length > 0) {
+  if (calendarReauthRequired) {
+    lines.push("CALENDAR: not connected (user needs to reconnect Google in Settings)");
+    lines.push("");
+  } else if (events.length > 0) {
     lines.push("TODAY'S CALENDAR EVENTS:");
     for (const e of events) {
       const time = e.start.dateTime
@@ -191,14 +196,26 @@ export function buildSystemMessage(userContext: string): ChatMessage {
   };
 }
 
+const REAUTH_ERRORS = new Set(["REAUTH_REQUIRED", "NO_REFRESH_TOKEN", "NO_GOOGLE_ACCOUNT"]);
+
+type CalendarFetchResult = {
+  events: { summary?: string; start: { dateTime?: string; date?: string } }[];
+  reauthRequired: boolean;
+};
+
 async function fetchCalendarEvents(
   userId: string,
   start: Date,
   end: Date
-): Promise<{ summary?: string; start: { dateTime?: string; date?: string } }[]> {
+): Promise<CalendarFetchResult> {
   try {
-    return await listEvents(userId, start.toISOString(), end.toISOString());
-  } catch {
-    return [];
+    const events = await listEvents(userId, start.toISOString(), end.toISOString());
+    return { events, reauthRequired: false };
+  } catch (err) {
+    const reauthRequired =
+      err instanceof Error &&
+      (REAUTH_ERRORS.has(err.message) ||
+        /Calendar API error (401|403)/.test(err.message));
+    return { events: [], reauthRequired };
   }
 }

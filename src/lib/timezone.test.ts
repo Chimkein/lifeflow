@@ -99,3 +99,46 @@ describe("America/New_York (DST boundary 2026-03-08)", () => {
     expect(endOfZonedDay(C, NY).toISOString()).toBe("2026-03-09T03:59:59.999Z");
   });
 });
+
+describe("America/New_York (DST fall-back 2026-11-01)", () => {
+  // 12:00Z is after the 06:00Z fall-back -> 07:00 EST (UTC-5).
+  const D = new Date("2026-11-01T12:00:00.000Z");
+
+  it("reports EST wall-clock parts", () => {
+    expect(zonedParts(D, NY)).toMatchObject({ year: 2026, month: 11, day: 1, hour: 7 });
+  });
+
+  it("uses EDT for start-of-day and EST for end-of-day", () => {
+    // 00:00 local is still EDT (UTC-4) -> 04:00Z.
+    expect(startOfZonedDay(D, NY).toISOString()).toBe("2026-11-01T04:00:00.000Z");
+    // 23:59:59.999 local is EST (UTC-5) -> next day 04:59:59.999Z.
+    expect(endOfZonedDay(D, NY).toISOString()).toBe("2026-11-02T04:59:59.999Z");
+  });
+
+  it("holds wall-clock time when adding a day across spring-forward", () => {
+    // 2026-03-07 07:00 EST -> +1 zoned day -> 2026-03-08 07:00 EDT (23h later).
+    const before = new Date("2026-03-07T12:00:00.000Z");
+    const after = addZonedDays(before, 1, NY);
+    expect(zonedParts(after, NY)).toMatchObject({ month: 3, day: 8, hour: 7 });
+    expect(after.toISOString()).toBe("2026-03-08T11:00:00.000Z");
+  });
+});
+
+describe("fixed fractional-offset zones", () => {
+  const KOLKATA = "Asia/Kolkata"; // UTC+5:30, no DST
+  const KATHMANDU = "Asia/Kathmandu"; // UTC+5:45, no DST
+  const E = new Date("2026-08-19T20:00:00.000Z");
+
+  it("handles a half-hour offset (India, +5:30)", () => {
+    expect(zonedYmd(E, KOLKATA)).toBe("2026-08-20");
+    expect(zonedHm(E, KOLKATA)).toBe("01:30");
+    expect(startOfZonedDay(E, KOLKATA).toISOString()).toBe("2026-08-19T18:30:00.000Z");
+    expect(endOfZonedDay(E, KOLKATA).toISOString()).toBe("2026-08-20T18:29:59.999Z");
+  });
+
+  it("handles a quarter-hour offset (Nepal, +5:45)", () => {
+    expect(zonedHm(E, KATHMANDU)).toBe("01:45");
+    expect(startOfZonedDay(E, KATHMANDU).toISOString()).toBe("2026-08-19T18:15:00.000Z");
+    expect(endOfZonedDay(E, KATHMANDU).toISOString()).toBe("2026-08-20T18:14:59.999Z");
+  });
+});
