@@ -46,7 +46,7 @@ export function DayView({
             <button
               key={event.id}
               onClick={() => onEventClick(event)}
-              className="mr-1 rounded bg-gold/15 px-2 py-0.5 text-xs text-foreground hover:bg-gold/25"
+              className="mr-1 rounded bg-primary/15 px-2 py-0.5 text-xs text-foreground hover:bg-primary/25"
             >
               {event.summary}
             </button>
@@ -62,7 +62,7 @@ export function DayView({
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                className="flex h-[60px] items-start justify-end border-b border-r border-border pr-2 pt-0.5 text-[10px] text-muted-foreground"
+                className="flex h-[60px] items-start justify-end border-b border-r border-border pr-2 pt-0.5 text-xs text-muted-foreground"
               >
                 {hour === 0 ? "" : format(new Date(2000, 0, 1, hour), "h a")}
               </div>
@@ -84,7 +84,7 @@ export function DayView({
                 <button
                   key={event.id}
                   onClick={() => onEventClick(event)}
-                  className="absolute left-1 right-4 overflow-hidden rounded bg-gold/20 px-2 py-1 text-left text-xs leading-tight text-foreground hover:bg-gold/30"
+                  className="absolute left-1 right-4 overflow-hidden rounded bg-primary/15 px-2 py-1 text-left text-xs leading-tight text-foreground hover:bg-primary/25"
                   style={{ top: `${top}px`, height: `${height}px` }}
                 >
                   <span className="font-medium">{event.summary}</span>

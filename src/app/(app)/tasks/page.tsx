@@ -150,7 +150,7 @@ export default function TasksPage() {
             Track and manage your work
           </p>
         </div>
-        <Button size="sm" onClick={handleNewTask} className="h-8">
+        <Button size="sm" onClick={handleNewTask}>
           <Plus className="mr-1.5 h-3.5 w-3.5" />
           New Task
         </Button>
@@ -158,12 +158,12 @@ export default function TasksPage() {
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex rounded-lg border border-border">
+        <div className="flex w-full rounded-lg border border-border sm:w-auto">
           {STATUS_TABS.map((t) => (
             <button
               key={t.value}
               onClick={() => setStatusFilter(t.value)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
+              className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg pointer-coarse:min-h-11 sm:flex-initial ${
                 statusFilter === t.value
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
@@ -173,12 +173,12 @@ export default function TasksPage() {
             </button>
           ))}
         </div>
-        <div className="flex rounded-lg border border-border">
+        <div className="flex max-w-full overflow-x-auto rounded-lg border border-border">
           {PRIORITY_TABS.map((t) => (
             <button
               key={t.value}
               onClick={() => setPriorityFilter(t.value)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
+              className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg pointer-coarse:min-h-11 ${
                 priorityFilter === t.value
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"

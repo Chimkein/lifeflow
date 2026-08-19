@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   Bot,
   Send,
@@ -38,7 +39,7 @@ export default function AIPage() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [ollamaOnline, setOllamaOnline] = useState<boolean | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -84,7 +85,13 @@ export default function AIPage() {
   const handleNewConversation = () => {
     setActiveConvId(null);
     setMessages([]);
+    setSidebarOpen(false);
     textareaRef.current?.focus();
+  };
+
+  const handleSelectConversation = (id: string) => {
+    loadConversation(id);
+    setSidebarOpen(false);
   };
 
   const handleDeleteConversation = async (id: string) => {
@@ -279,72 +286,87 @@ export default function AIPage() {
     );
   }
 
-  return (
-    <div className="flex h-[calc(100vh-7rem)] gap-4">
-      {/* Conversation sidebar */}
-      {sidebarOpen && (
-        <div className="flex w-64 shrink-0 flex-col">
-          <Button
-            size="sm"
-            className="mb-3 w-full gap-2"
-            onClick={handleNewConversation}
+  const conversationList = (
+    <>
+      <Button
+        size="sm"
+        className="mb-3 w-full gap-2"
+        onClick={handleNewConversation}
+      >
+        <Plus className="h-4 w-4" />
+        New chat
+      </Button>
+      <div className="flex-1 space-y-1 overflow-y-auto">
+        {conversations.map((conv) => (
+          <div
+            key={conv.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => handleSelectConversation(conv.id)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSelectConversation(conv.id); }}
+            className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer ${
+              activeConvId === conv.id
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            }`}
           >
-            <Plus className="h-4 w-4" />
-            New chat
-          </Button>
-          <div className="flex-1 space-y-1 overflow-y-auto">
-            {conversations.map((conv) => (
-              <div
-                key={conv.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => loadConversation(conv.id)}
-                onKeyDown={(e) => { if (e.key === "Enter") loadConversation(conv.id); }}
-                className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer ${
-                  activeConvId === conv.id
-                    ? "bg-gold/15 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                }`}
-              >
-                <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate">{conv.title}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteConversation(conv.id);
-                  }}
-                  className="hidden shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive group-hover:block"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
-            {conversations.length === 0 && (
-              <p className="px-3 py-8 text-center text-xs text-muted-foreground">
-                No conversations yet
-              </p>
-            )}
+            <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+            <span className="flex-1 truncate">{conv.title}</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteConversation(conv.id);
+              }}
+              aria-label="Delete conversation"
+              className="relative shrink-0 rounded p-1 text-muted-foreground transition-opacity after:absolute after:-inset-2 hover:text-destructive focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
           </div>
-        </div>
-      )}
+        ))}
+        {conversations.length === 0 && (
+          <p className="px-3 py-8 text-center text-xs text-muted-foreground">
+            No conversations yet
+          </p>
+        )}
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-[calc(100dvh-5.5rem)] gap-4 lg:h-[calc(100dvh-7rem)]">
+      {/* Conversation list — inline pane on desktop */}
+      <div className="hidden w-64 shrink-0 flex-col lg:flex">
+        {conversationList}
+      </div>
+
+      {/* Conversation list — sheet on mobile */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-[280px] gap-2 p-4">
+          <SheetTitle className="text-sm font-medium">Conversations</SheetTitle>
+          <div className="flex min-h-0 flex-1 flex-col">{conversationList}</div>
+        </SheetContent>
+      </Sheet>
 
       {/* Chat area */}
-      <div className="flex flex-1 flex-col">
-        {/* Toggle sidebar on mobile */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Open conversation list on mobile */}
         <div className="mb-2 flex items-center gap-2 lg:hidden">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="gap-2"
+            onClick={() => setSidebarOpen(true)}
           >
             <MessageSquare className="h-4 w-4" />
+            Chats
           </Button>
         </div>
 
         {messages.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/15">
-              <Sparkles className="h-8 w-8 text-gold" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+              <Sparkles className="h-8 w-8 text-primary" />
             </div>
             <h2 className="mt-4 text-lg font-semibold">LifeFlow AI</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
@@ -364,7 +386,7 @@ export default function AIPage() {
                     setInput(suggestion);
                     textareaRef.current?.focus();
                   }}
-                  className="rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-gold/30 hover:bg-gold/5"
+                  className="rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5"
                 >
                   {suggestion}
                 </button>
@@ -380,8 +402,8 @@ export default function AIPage() {
                   className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
                 >
                   {msg.role === "assistant" && (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gold/15">
-                      <Bot className="h-4 w-4 text-gold" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Bot className="h-4 w-4 text-primary" />
                     </div>
                   )}
                   <div
@@ -435,7 +457,7 @@ export default function AIPage() {
               )}
             </Button>
           </Card>
-          <p className="mt-2 pb-1 text-center text-[10px] text-muted-foreground/50">
+          <p className="mt-2 pb-1 text-center text-xs text-muted-foreground/70">
             Powered by Groq AI
           </p>
         </div>

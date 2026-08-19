@@ -46,7 +46,7 @@ export function AgendaView({ events, onEventClick }: AgendaViewProps) {
         >
           <div
             className={`border-b border-border px-4 py-2 ${
-              isToday(date) ? "bg-gold/10" : "bg-muted/30"
+              isToday(date) ? "bg-primary/8" : "bg-muted/30"
             }`}
           >
             <span className="text-sm font-medium">
@@ -61,7 +61,7 @@ export function AgendaView({ events, onEventClick }: AgendaViewProps) {
                 onClick={() => onEventClick(event)}
                 className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
               >
-                <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-gold" />
+                <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{event.summary}</p>
                   <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">

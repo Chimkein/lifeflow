@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { CalendarHeader } from "@/components/calendar/calendar-header";
 import { MonthView } from "@/components/calendar/month-view";
 import { WeekView } from "@/components/calendar/week-view";
@@ -25,6 +26,21 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const appliedMobileDefault = useRef(false);
+
+  // On phones, start in the agenda view — month/week grids don't fit.
+  // Effect-based so SSR and first client render stay in sync.
+  useEffect(() => {
+    if (appliedMobileDefault.current) return;
+    appliedMobileDefault.current = true;
+    if (window.innerWidth < 768) setView("agenda");
+  }, []);
+
+  // Week view is desktop-only; fall back to the day grid when narrow.
+  useEffect(() => {
+    if (isMobile && view === "week") setView("day");
+  }, [isMobile, view]);
 
   // Event dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -103,6 +119,12 @@ export default function CalendarPage() {
   const handleToday = () => setCurrentDate(new Date());
 
   const handleDayClick = (date: Date) => {
+    if (isMobile) {
+      // Month cells only show dots on phones — drill into the day instead.
+      setCurrentDate(date);
+      setView("day");
+      return;
+    }
     setEditingEvent(null);
     setDefaultDate(date);
     setDefaultHour(9);

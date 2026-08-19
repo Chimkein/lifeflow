@@ -104,8 +104,8 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="border-none shadow-sm">
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/15">
-              <Calendar className="h-5 w-5 text-gold" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+              <Calendar className="h-5 w-5 text-primary" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{appointments.length}</p>
@@ -117,8 +117,8 @@ export default async function DashboardPage() {
         <Link href="/tasks">
           <Card className="border-none shadow-sm transition-shadow hover:shadow-md">
             <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/15">
-                <CheckSquare className="h-5 w-5 text-gold" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                <CheckSquare className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-semibold">{openTasks}</p>
@@ -131,8 +131,8 @@ export default async function DashboardPage() {
         <Link href="/notes">
           <Card className="border-none shadow-sm transition-shadow hover:shadow-md">
             <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/15">
-                <StickyNote className="h-5 w-5 text-gold" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                <StickyNote className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-semibold">{noteCount}</p>
@@ -144,8 +144,8 @@ export default async function DashboardPage() {
 
         <Card className="border-none shadow-sm">
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/15">
-              <Clock className="h-5 w-5 text-gold" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+              <Clock className="h-5 w-5 text-primary" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{upcomingCount}</p>
@@ -182,8 +182,8 @@ export default async function DashboardPage() {
                     key={apt.id}
                     className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/50"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold/15">
-                      <Mail className="h-4 w-4 text-gold" />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Mail className="h-4 w-4 text-primary" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
@@ -221,7 +221,7 @@ export default async function DashboardPage() {
               </CardTitle>
               <Link
                 href="/tasks"
-                className="text-xs text-background/50 hover:text-background/80"
+                className="text-xs text-background/70 hover:text-background"
               >
                 View all
               </Link>
@@ -234,7 +234,7 @@ export default async function DashboardPage() {
                 <p className="text-sm text-background/70">
                   No tasks due today
                 </p>
-                <p className="text-xs text-background/40">
+                <p className="text-xs text-background/60">
                   {openTasks > 0
                     ? `${openTasks} open task${openTasks === 1 ? "" : "s"} total`
                     : "Create tasks to track your work"}
@@ -244,13 +244,13 @@ export default async function DashboardPage() {
               <div className="space-y-3">
                 {todayTasks.map((task) => (
                   <div key={task.id} className="flex items-center gap-3">
-                    <div className="h-2 w-2 shrink-0 rounded-full bg-gold" />
+                    <div className="h-2 w-2 shrink-0 rounded-full bg-primary" />
                     <p className="flex-1 truncate text-sm text-background/90">
                       {task.title}
                     </p>
                     <Badge
                       variant="secondary"
-                      className="bg-background/10 text-[10px] text-background/70"
+                      className="bg-background/10 text-xs text-background/70"
                     >
                       {task.priority}
                     </Badge>
@@ -295,14 +295,14 @@ export default async function DashboardPage() {
                   >
                     <p className="text-sm font-medium">{note.title}</p>
                     <div className="mt-1 flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {formatInTZ(note.updatedAt, { month: "short", day: "numeric" })}
                       </span>
                       {note.tags.slice(0, 3).map((t) => (
                         <Badge
                           key={t.id}
                           variant="secondary"
-                          className="text-[10px]"
+                          className="text-xs"
                         >
                           {t.tag}
                         </Badge>
@@ -333,7 +333,7 @@ export default async function DashboardPage() {
           <CardContent>
             <Link
               href="/ai"
-              className="block rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-gold/30 hover:bg-gold/5"
+              className="block rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5"
             >
               What do I need to do today?
             </Link>
