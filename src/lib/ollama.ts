@@ -1,9 +1,18 @@
 import { prisma } from "@/lib/db";
 import { listEvents } from "@/lib/google-calendar";
 import { startOfZonedDay, endOfZonedDay, formatInTZ } from "@/lib/timezone";
+import { parseSSE } from "@/lib/groq-sse";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
+// Hard ceiling below the route's maxDuration (60s) so a stalled upstream aborts
+// cleanly instead of pinning the function to its timeout.
+const GROQ_TIMEOUT_MS = 55000;
+
+function withTimeout(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(GROQ_TIMEOUT_MS);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
 
 const AVAILABLE_MODELS = [
   { name: "openai/gpt-oss-20b", label: "GPT-OSS 20B" },
@@ -36,8 +45,15 @@ export async function chatStream(
       "Content-Type": "application/json",
       Authorization: `Bearer ${GROQ_API_KEY}`,
     },
-    body: JSON.stringify({ model, messages, stream: true, max_tokens: 1024, temperature: 0.7 }),
-    signal,
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: true,
+      max_tokens: 1024,
+      temperature: 0.7,
+      reasoning_effort: "low",
+    }),
+    signal: withTimeout(signal),
   });
 
   if (!res.ok) {
@@ -47,35 +63,32 @@ export async function chatStream(
 
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
+  // Carries the trailing partial line between reads so a `data:` line (or the
+  // terminal `[DONE]`) split across network chunks is never dropped.
+  let buffer = "";
 
   return new ReadableStream<string>({
     async pull(controller) {
       const { done, value } = await reader.read();
       if (done) {
+        // Flush any final complete line that arrived without a trailing newline.
+        if (buffer.trim()) {
+          for (const c of parseSSE(buffer + "\n").contents) controller.enqueue(c);
+        }
         controller.close();
         return;
       }
-      const chunk = decoder.decode(value, { stream: true });
-      for (const line of chunk.split("\n").filter(Boolean)) {
-        if (!line.startsWith("data: ")) continue;
-        const data = line.slice(6);
-        if (data === "[DONE]") {
-          controller.close();
-          return;
-        }
-        try {
-          const json = JSON.parse(data);
-          const content = json.choices?.[0]?.delta?.content;
-          if (content) {
-            controller.enqueue(content);
-          }
-        } catch {
-          // partial JSON, skip
-        }
+      buffer += decoder.decode(value, { stream: true });
+      const { contents, done: sawDone, rest } = parseSSE(buffer);
+      buffer = rest;
+      for (const c of contents) controller.enqueue(c);
+      if (sawDone) {
+        reader.cancel().catch(() => {});
+        controller.close();
       }
     },
     cancel() {
-      reader.cancel();
+      reader.cancel().catch(() => {});
     },
   });
 }
@@ -90,7 +103,14 @@ export async function chatComplete(
       "Content-Type": "application/json",
       Authorization: `Bearer ${GROQ_API_KEY}`,
     },
-    body: JSON.stringify({ model, messages, stream: false, max_tokens: 1024, temperature: 0.7 }),
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: false,
+      max_tokens: 1024,
+      temperature: 0.7,
+      reasoning_effort: "low",
+    }),
     signal: AbortSignal.timeout(30000),
   });
 

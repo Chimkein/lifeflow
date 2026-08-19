@@ -116,7 +116,7 @@ export async function POST(req: Request) {
           }
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
-        } catch (err) {
+        } catch {
           try {
             if (fullResponse) {
               await prisma.chatMessage.create({
