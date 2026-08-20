@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { listEvents, createEvent } from "@/lib/google-calendar";
+import {
+  listEvents,
+  createEvent,
+  type CalendarEventInput,
+} from "@/lib/google-calendar";
+import { validationError } from "@/lib/api-helpers";
+import { parseCalendarEvent } from "@/lib/validation";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -27,7 +33,8 @@ export async function GET(req: NextRequest) {
     if (message === "NO_GOOGLE_ACCOUNT" || message === "REAUTH_REQUIRED") {
       return NextResponse.json({ error: message }, { status: 401 });
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[Calendar] list error:", e);
+    return NextResponse.json({ error: "Failed to load events" }, { status: 500 });
   }
 }
 
@@ -37,15 +44,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let input: CalendarEventInput;
   try {
-    const body = await req.json();
-    const event = await createEvent(session.user.id, body);
+    const body = await req.json().catch(() => ({}));
+    input = parseCalendarEvent(body) as CalendarEventInput;
+  } catch (e) {
+    return validationError(e) ?? NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+
+  try {
+    const event = await createEvent(session.user.id, input);
     return NextResponse.json({ event }, { status: 201 });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
     if (message === "NO_GOOGLE_ACCOUNT" || message === "REAUTH_REQUIRED") {
       return NextResponse.json({ error: message }, { status: 401 });
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[Calendar] create error:", e);
+    return NextResponse.json({ error: "Failed to create event" }, { status: 500 });
   }
 }

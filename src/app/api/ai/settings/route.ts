@@ -29,7 +29,14 @@ export async function PATCH(req: Request) {
   const data: Record<string, unknown> = {};
 
   if (typeof body.ollamaModel === "string") {
-    data.ollamaModel = body.ollamaModel;
+    const model = body.ollamaModel.trim();
+    if (!model || model.length > 100) {
+      return NextResponse.json(
+        { error: "Invalid model name" },
+        { status: 400 }
+      );
+    }
+    data.ollamaModel = model;
   }
   if (typeof body.aiBriefingEnabled === "boolean") {
     data.aiBriefingEnabled = body.aiBriefingEnabled;

@@ -22,17 +22,19 @@ export async function PATCH(
     );
   }
 
-  const appointment = await prisma.gmailAppointment.findUnique({
-    where: { id: appointmentId },
+  // Scope the write to the owner in a single query — no cross-tenant fetch,
+  // and a mismatched user simply updates zero rows.
+  const result = await prisma.gmailAppointment.updateMany({
+    where: { id: appointmentId, userId: session.user.id },
+    data: { status },
   });
 
-  if (!appointment || appointment.userId !== session.user.id) {
+  if (result.count === 0) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const updated = await prisma.gmailAppointment.update({
+  const updated = await prisma.gmailAppointment.findUnique({
     where: { id: appointmentId },
-    data: { status },
   });
 
   return NextResponse.json(updated);

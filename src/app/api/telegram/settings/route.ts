@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isBotConfigured, getMe } from "@/lib/telegram";
+import { isValidHm } from "@/lib/validation";
 
 export async function GET() {
   const session = await auth();
@@ -49,8 +50,26 @@ export async function PATCH(req: NextRequest) {
   };
 
   const data: Record<string, unknown> = {};
-  if (briefingTime !== undefined) data.briefingTime = briefingTime;
-  if (briefingEnabled !== undefined) data.briefingEnabled = briefingEnabled;
+  if (briefingTime !== undefined) {
+    // Must be a 24h "HH:mm" string — the cron briefing does a lexical compare
+    // against it, so a malformed value would silently break scheduling.
+    if (!isValidHm(briefingTime)) {
+      return NextResponse.json(
+        { error: "briefingTime must be in HH:mm format (e.g. 07:00)" },
+        { status: 400 }
+      );
+    }
+    data.briefingTime = briefingTime;
+  }
+  if (briefingEnabled !== undefined) {
+    if (typeof briefingEnabled !== "boolean") {
+      return NextResponse.json(
+        { error: "briefingEnabled must be a boolean" },
+        { status: 400 }
+      );
+    }
+    data.briefingEnabled = briefingEnabled;
+  }
   if (disconnect) data.telegramChatId = null;
 
   await prisma.user.update({
