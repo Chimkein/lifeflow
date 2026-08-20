@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,6 +53,7 @@ export default function AIPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     (async () => {
@@ -154,6 +157,12 @@ export default function AIPage() {
       )
     );
     loadConversations();
+    if (allOk) {
+      toast.success("Deleted");
+      router.refresh();
+    } else {
+      toast.error("Couldn't delete — please try again");
+    }
   };
 
   const cancelActions = (messageId: string) => {
@@ -206,6 +215,7 @@ export default function AIPage() {
         reply?: string;
         error?: string;
         pendingActions?: PendingAction[];
+        changed?: boolean;
       };
 
       if (!res.ok) {
@@ -235,6 +245,9 @@ export default function AIPage() {
         )
       );
       loadConversations();
+      // If the AI created/updated/completed something, refresh so other pages
+      // (dashboard, tasks, calendar) reflect it without a manual reload.
+      if (data.changed) router.refresh();
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         setMessages((prev) =>
@@ -372,15 +385,16 @@ export default function AIPage() {
             </div>
             <h2 className="mt-4 text-lg font-semibold">LifeFlow AI</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              Ask about your tasks, schedule, or notes. I have context about
-              your day and can help you prioritize and plan.
+              Ask about — or make changes to — your tasks, schedule, and notes.
+              I can create, update, complete, and (with your confirmation) delete
+              them for you.
             </p>
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
               {[
                 "What should I focus on today?",
-                "Summarize my open tasks",
-                "Do I have any urgent deadlines?",
-                "What did I work on recently?",
+                "Add a task to call the dentist tomorrow",
+                "What's on my calendar this week?",
+                "Create a note titled 'Ideas'",
               ].map((suggestion) => (
                 <button
                   key={suggestion}

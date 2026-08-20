@@ -7,6 +7,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Toaster } from "sonner";
 
 export default async function AppLayout({
   children,
@@ -31,6 +32,7 @@ export default async function AppLayout({
           </header>
           <div className="flex flex-1 flex-col p-4 lg:p-6">{children}</div>
         </SidebarInset>
+        <Toaster richColors position="top-right" theme="system" closeButton />
       </SidebarProvider>
     </SessionProvider>
   );

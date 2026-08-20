@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -91,25 +92,33 @@ export default function NotesPage() {
   };
 
   const handleSave = async (form: NoteFormData) => {
-    if (editingNote) {
-      await fetch(`/api/notes/${editingNote.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+    const res = editingNote
+      ? await fetch(`/api/notes/${editingNote.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        })
+      : await fetch("/api/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+    if (res.ok) {
+      toast.success(editingNote ? "Note updated" : "Note created");
+      await fetchNotes();
     } else {
-      await fetch("/api/notes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+      toast.error("Couldn't save the note");
     }
-    await fetchNotes();
   };
 
   const handleDelete = async (noteId: string) => {
-    await fetch(`/api/notes/${noteId}`, { method: "DELETE" });
-    await fetchNotes();
+    const res = await fetch(`/api/notes/${noteId}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Note deleted");
+      await fetchNotes();
+    } else {
+      toast.error("Couldn't delete the note");
+    }
   };
 
   const handleArchive = async (noteId: string) => {

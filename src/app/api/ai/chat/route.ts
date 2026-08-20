@@ -84,7 +84,7 @@ export async function POST(req: Request) {
   ];
 
   try {
-    const { text, provider, pendingActions } = await chatWithTools(userId, messages, model);
+    const { text, provider, pendingActions, actions } = await chatWithTools(userId, messages, model);
     const reply =
       text.trim() ||
       (pendingActions.length
@@ -106,7 +106,13 @@ export async function POST(req: Request) {
       });
     }
 
-    return Response.json({ conversationId: convId, reply, provider, pendingActions });
+    return Response.json({
+      conversationId: convId,
+      reply,
+      provider,
+      pendingActions,
+      changed: actions.length > 0,
+    });
   } catch (err) {
     console.error("[AI Chat] Error:", err);
     const msg = err instanceof Error ? err.message : "AI unavailable";
