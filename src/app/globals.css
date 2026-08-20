@@ -165,15 +165,15 @@
     @apply font-sans;
   }
 
-  /* Smoothly cross-fade colors when the theme flips. Interactive elements keep
-     their own faster transition utilities, so hovers stay snappy. */
-  *,
-  ::before,
-  ::after {
-    transition-property: background-color, border-color, color, fill, stroke,
-      box-shadow;
-    transition-duration: 0.3s;
-    transition-timing-function: ease;
+  /* Theme flip cross-fade. The View Transitions API (driven by the toggle in
+     app-sidebar) snapshots the whole page and cross-fades it as one
+     GPU-composited layer, so the cost no longer scales with the number of
+     elements on screen — a data-packed dashboard animates as smoothly as an
+     empty one. Where the API is unsupported, the theme just swaps instantly. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.35s;
+    animation-timing-function: ease;
   }
 
   /* Glossy-matte surfaces: a soft sheen pooled at the top of each panel over a

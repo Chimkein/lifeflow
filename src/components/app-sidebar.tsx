@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -65,6 +66,27 @@ export function AppSidebar() {
   const isDark = mounted && resolvedTheme === "dark";
   const settingsActive = pathname === "/settings";
 
+  // Flip the theme as a single GPU-composited cross-fade via the View
+  // Transitions API. Its cost is independent of how many elements are on
+  // screen, so a data-packed dashboard animates as smoothly as an empty one —
+  // unlike a per-element color transition, whose cost scales with the DOM.
+  // Falls back to an instant swap where the API is unsupported or motion is
+  // reduced.
+  const toggleTheme = () => {
+    const next = resolvedTheme === "dark" ? "light" : "dark";
+    const doc = document as Document & {
+      startViewTransition?: (callback: () => void) => unknown;
+    };
+    if (
+      !doc.startViewTransition ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setTheme(next);
+      return;
+    }
+    doc.startViewTransition(() => flushSync(() => setTheme(next)));
+  };
+
   const accountItems = () => (
     <>
       <div className="flex flex-col gap-0.5 px-1.5 py-1.5">
@@ -80,9 +102,7 @@ export function AppSidebar() {
         <Settings className="h-4 w-4" />
         Settings
       </DropdownMenuItem>
-      <DropdownMenuItem
-        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      >
+      <DropdownMenuItem onClick={toggleTheme}>
         {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         {mounted ? (isDark ? "Light mode" : "Dark mode") : "Theme"}
       </DropdownMenuItem>
@@ -102,7 +122,7 @@ export function AppSidebar() {
       <TooltipProvider delay={250}>
         <aside
           data-slot="app-rail"
-          className="sticky top-3 z-30 m-3 hidden h-[calc(100svh-1.5rem)] w-16 shrink-0 flex-col items-center gap-1 rounded-[1.75rem] border border-sidebar-border bg-sidebar/60 py-3 shadow-lg backdrop-blur-2xl md:flex"
+          className="sticky top-3 z-30 m-3 hidden h-[calc(100svh-1.5rem)] w-16 shrink-0 flex-col items-center gap-1 rounded-[1.75rem] border border-sidebar-border bg-sidebar/60 py-3 shadow-lg backdrop-blur-xl md:flex"
         >
           {/* Brand */}
           <Tooltip>
@@ -167,9 +187,7 @@ export function AppSidebar() {
                           ? "Switch to light mode"
                           : "Switch to dark mode"
                     }
-                    onClick={() =>
-                      setTheme(resolvedTheme === "dark" ? "light" : "dark")
-                    }
+                    onClick={toggleTheme}
                     className={cn(railItem, idle)}
                   />
                 }
@@ -239,7 +257,7 @@ export function AppSidebar() {
       </TooltipProvider>
 
       {/* Phones — bottom navigation bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around gap-1 border-t border-sidebar-border bg-sidebar/80 px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-2xl md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around gap-1 border-t border-sidebar-border bg-sidebar/80 px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
