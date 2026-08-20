@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { validationError } from "@/lib/api-helpers";
+import {
+  reqString,
+  optString,
+  optEnum,
+  optDate,
+  LIMITS,
+  TASK_PRIORITIES,
+} from "@/lib/validation";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -33,25 +42,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { title, description, priority, dueAt } = body as {
-    title: string;
-    description?: string;
-    priority?: string;
-    dueAt?: string;
-  };
+  const body = await req.json().catch(() => ({}));
 
-  if (!title?.trim()) {
-    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  let title: string;
+  let description: string | undefined;
+  let priority: string | undefined;
+  let dueAt: Date | null;
+  try {
+    title = reqString(body.title, "Title", LIMITS.taskTitle);
+    description = optString(body.description, "Description", LIMITS.taskDescription);
+    priority = optEnum(body.priority, "Priority", TASK_PRIORITIES);
+    dueAt = optDate(body.dueAt, "Due date") ?? null;
+  } catch (e) {
+    return validationError(e) ?? NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
   const task = await prisma.task.create({
     data: {
       userId: session.user.id,
-      title: title.trim(),
+      title,
       description: description || null,
       priority: priority || "medium",
-      dueAt: dueAt ? new Date(dueAt) : null,
+      dueAt,
     },
   });
 

@@ -2,6 +2,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildUserContext, buildSystemMessage, type ChatMessage } from "@/lib/ollama";
 import { chatWithTools } from "@/lib/ai-tools";
+import { rateLimit } from "@/lib/rate-limit";
+import { tooManyRequests } from "@/lib/api-helpers";
+import { LIMITS } from "@/lib/validation";
 
 export const maxDuration = 60;
 
@@ -23,12 +26,23 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  const userId = session.user.id;
+
+  // Each call fans out to paid LLM providers (up to several tool rounds), so
+  // cap the rate per user as defense-in-depth against runaway loops / abuse.
+  const limit = rateLimit(`ai-chat:${userId}`, 20, 60_000);
+  if (!limit.ok) return tooManyRequests(limit.retryAfter);
+
   const { message, conversationId } = await req.json();
-  if (!message || typeof message !== "string") {
+  if (!message || typeof message !== "string" || !message.trim()) {
     return new Response("Missing message", { status: 400 });
   }
-
-  const userId = session.user.id;
+  if (message.length > LIMITS.aiMessage) {
+    return new Response(
+      `Message too long (max ${LIMITS.aiMessage} characters)`,
+      { status: 400 }
+    );
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -115,7 +129,9 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("[AI Chat] Error:", err);
-    const msg = err instanceof Error ? err.message : "AI unavailable";
-    return Response.json({ error: msg }, { status: 502 });
+    return Response.json(
+      { error: "The assistant is temporarily unavailable. Please try again." },
+      { status: 502 }
+    );
   }
 }

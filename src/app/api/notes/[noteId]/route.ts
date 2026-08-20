@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { validationError } from "@/lib/api-helpers";
+import { reqString, optString, optTags, LIMITS } from "@/lib/validation";
 
 export async function GET(
   _req: NextRequest,
@@ -38,13 +40,22 @@ export async function PATCH(
   }
 
   const { noteId } = await params;
-  const body = await req.json();
-  const { title, content, tags, archived } = body as {
-    title?: string;
-    content?: string;
-    tags?: string[];
-    archived?: boolean;
-  };
+  const body = await req.json().catch(() => ({}));
+
+  let title: string | undefined;
+  let content: string | undefined;
+  let tags: string[] | undefined;
+  const archived = typeof body.archived === "boolean" ? body.archived : undefined;
+  try {
+    title =
+      body.title === undefined
+        ? undefined
+        : reqString(body.title, "Title", LIMITS.noteTitle);
+    content = optString(body.content, "Content", LIMITS.noteContent, { trim: false });
+    tags = optTags(body.tags);
+  } catch (e) {
+    return validationError(e) ?? NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
 
   const existing = await prisma.note.findFirst({
     where: { id: noteId, userId: session.user.id },
@@ -57,7 +68,7 @@ export async function PATCH(
   const note = await prisma.note.update({
     where: { id: noteId },
     data: {
-      ...(title !== undefined && { title: title.trim() }),
+      ...(title !== undefined && { title }),
       ...(content !== undefined && { content }),
       ...(archived !== undefined && {
         archivedAt: archived ? new Date() : null,
@@ -65,7 +76,7 @@ export async function PATCH(
       ...(tags !== undefined && {
         tags: {
           deleteMany: {},
-          create: tags.map((t: string) => ({ tag: t.trim() })),
+          create: tags.map((t) => ({ tag: t })),
         },
       }),
     },

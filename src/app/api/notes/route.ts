@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { validationError } from "@/lib/api-helpers";
+import { reqString, optString, optTags, LIMITS } from "@/lib/validation";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -41,24 +43,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { title, content, tags } = body as {
-    title: string;
-    content?: string;
-    tags?: string[];
-  };
+  const body = await req.json().catch(() => ({}));
 
-  if (!title?.trim()) {
-    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  let title: string;
+  let content: string | undefined;
+  let tags: string[] | undefined;
+  try {
+    title = reqString(body.title, "Title", LIMITS.noteTitle);
+    content = optString(body.content, "Content", LIMITS.noteContent, { trim: false });
+    tags = optTags(body.tags);
+  } catch (e) {
+    return validationError(e) ?? NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
   const note = await prisma.note.create({
     data: {
       userId: session.user.id,
-      title: title.trim(),
+      title,
       content: content ?? "",
       tags: tags?.length
-        ? { create: tags.map((t: string) => ({ tag: t.trim() })) }
+        ? { create: tags.map((t) => ({ tag: t })) }
         : undefined,
     },
     include: { tags: true },

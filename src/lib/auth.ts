@@ -36,12 +36,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   session: {
     strategy: "database",
+    maxAge: 60 * 60 * 24 * 7, // 7-day absolute session lifetime
+    updateAge: 60 * 60 * 24, // slide the expiry at most once per day
   },
   pages: {
     signIn: "/login",
   },
   callbacks: {
-    async signIn({ account }) {
+    async signIn({ account, profile }) {
+      // Optional allow-list. When ALLOWED_EMAILS is set (comma-separated), only
+      // those Google accounts may sign in — the intended posture for an
+      // unadvertised / portfolio deployment, so random visitors can't create
+      // accounts and burn AI/Gmail quota or storage. Unset = open sign-up.
+      const allowed = (process.env.ALLOWED_EMAILS ?? "")
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+      if (allowed.length > 0) {
+        const email = profile?.email?.toLowerCase();
+        if (!email || !allowed.includes(email)) return false;
+      }
+
       if (account?.provider === "google") {
         await prisma.account.updateMany({
           where: {

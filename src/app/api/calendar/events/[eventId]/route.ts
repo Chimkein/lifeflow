@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { updateEvent, deleteEvent } from "@/lib/google-calendar";
+import {
+  updateEvent,
+  deleteEvent,
+  type CalendarEventInput,
+} from "@/lib/google-calendar";
+import { validationError } from "@/lib/api-helpers";
+import { parseCalendarEvent } from "@/lib/validation";
 
 export async function PATCH(
   req: NextRequest,
@@ -13,16 +19,24 @@ export async function PATCH(
 
   const { eventId } = await params;
 
+  let input: CalendarEventInput;
   try {
-    const body = await req.json();
-    const event = await updateEvent(session.user.id, eventId, body);
+    const body = await req.json().catch(() => ({}));
+    input = parseCalendarEvent(body, { partial: true }) as CalendarEventInput;
+  } catch (e) {
+    return validationError(e) ?? NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+
+  try {
+    const event = await updateEvent(session.user.id, eventId, input);
     return NextResponse.json({ event });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
     if (message === "NO_GOOGLE_ACCOUNT" || message === "REAUTH_REQUIRED") {
       return NextResponse.json({ error: message }, { status: 401 });
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[Calendar] update error:", e);
+    return NextResponse.json({ error: "Failed to update event" }, { status: 500 });
   }
 }
 
@@ -45,6 +59,7 @@ export async function DELETE(
     if (message === "NO_GOOGLE_ACCOUNT" || message === "REAUTH_REQUIRED") {
       return NextResponse.json({ error: message }, { status: 401 });
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[Calendar] delete error:", e);
+    return NextResponse.json({ error: "Failed to delete event" }, { status: 500 });
   }
 }
