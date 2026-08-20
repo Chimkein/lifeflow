@@ -11,6 +11,34 @@ import type { ChatMessage } from "@/lib/ollama";
 const TIMEZONE = process.env.USER_TIMEZONE ?? "Asia/Manila";
 const MAX_TOOL_ROUNDS = 6;
 
+// Deletes are hard-gated: the server never executes them inline. It returns a
+// pending action to the UI, which must be confirmed via the confirm endpoint.
+export const DESTRUCTIVE_TOOLS = new Set(["delete_task", "delete_note", "delete_event"]);
+
+export interface PendingAction {
+  token: string;
+  name: string;
+  args: Record<string, unknown>;
+  label: string;
+}
+
+async function describePending(userId: string, name: string, args: Record<string, unknown>): Promise<string> {
+  try {
+    if (name === "delete_task") {
+      const t = await prisma.task.findFirst({ where: { id: String(args.taskId), userId }, select: { title: true } });
+      return t ? `task "${t.title}"` : "this task";
+    }
+    if (name === "delete_note") {
+      const n = await prisma.note.findFirst({ where: { id: String(args.noteId), userId }, select: { title: true } });
+      return n ? `note "${n.title}"` : "this note";
+    }
+    if (name === "delete_event") return "this calendar event";
+  } catch {
+    /* fall through */
+  }
+  return "this item";
+}
+
 // ---- Tool schemas (OpenAI function format) --------------------------------
 
 export const TOOLS = [
@@ -226,12 +254,14 @@ export interface ToolChatResult {
   text: string;
   provider: string;
   actions: { name: string; ok: boolean }[];
+  pendingActions: PendingAction[];
 }
 
 async function runToolLoop(p: Provider, userId: string, messages: ChatMessage[]): Promise<ToolChatResult> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const convo: any[] = [...messages];
   const actions: { name: string; ok: boolean }[] = [];
+  const pending: PendingAction[] = [];
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const res = await fetch(`${p.baseUrl}/chat/completions`, {
@@ -265,16 +295,32 @@ async function runToolLoop(p: Provider, userId: string, messages: ChatMessage[])
         } catch {
           /* leave empty */
         }
-        const result = await executeTool(userId, tc.function.name, args);
-        actions.push({ name: tc.function.name, ok: result.ok === true });
-        convo.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+        if (DESTRUCTIVE_TOOLS.has(tc.function.name)) {
+          // Hard gate: do NOT delete. Surface a pending action for the UI to
+          // confirm, and tell the model it isn't deleted yet.
+          const label = await describePending(userId, tc.function.name, args);
+          pending.push({ token: tc.id, name: tc.function.name, args, label });
+          convo.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: JSON.stringify({
+              ok: false,
+              status: "awaiting_user_confirmation",
+              note: `NOT deleted yet. A confirmation button for ${label} has been shown to the user; it will only be removed if they click Confirm.`,
+            }),
+          });
+        } else {
+          const result = await executeTool(userId, tc.function.name, args);
+          actions.push({ name: tc.function.name, ok: result.ok === true });
+          convo.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+        }
       }
       continue; // let the model react to the tool results
     }
 
-    return { text: msg?.content ?? "", provider: p.name, actions };
+    return { text: msg?.content ?? "", provider: p.name, actions, pendingActions: pending };
   }
-  return { text: "I made several changes but stopped to avoid looping. Please check the result.", provider: p.name, actions };
+  return { text: "I made several changes but stopped to avoid looping. Please check the result.", provider: p.name, actions, pendingActions: pending };
 }
 
 // Run the tool-enabled chat with provider fallback (Gemini primary if

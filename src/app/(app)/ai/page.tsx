@@ -18,10 +18,19 @@ import {
   Square,
 } from "lucide-react";
 
+interface PendingAction {
+  token: string;
+  name: string;
+  args: Record<string, unknown>;
+  label: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  pendingActions?: PendingAction[];
+  resolved?: boolean;
 }
 
 interface Conversation {
@@ -116,6 +125,47 @@ export default function AIPage() {
     };
   }, []);
 
+  const confirmActions = async (messageId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg?.pendingActions?.length) return;
+    let allOk = true;
+    for (const pa of msg.pendingActions) {
+      try {
+        const res = await fetch("/api/ai/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: pa.name, args: pa.args }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) allOk = false;
+      } catch {
+        allOk = false;
+      }
+    }
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? {
+              ...m,
+              resolved: true,
+              content: m.content + (allOk ? "\n\n✓ Done." : "\n\n⚠️ Something went wrong — please try again."),
+            }
+          : m
+      )
+    );
+    loadConversations();
+  };
+
+  const cancelActions = (messageId: string) => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, resolved: true, content: m.content + "\n\nCancelled — nothing was deleted." }
+          : m
+      )
+    );
+  };
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || streaming) return;
@@ -155,6 +205,7 @@ export default function AIPage() {
         conversationId?: string;
         reply?: string;
         error?: string;
+        pendingActions?: PendingAction[];
       };
 
       if (!res.ok) {
@@ -175,7 +226,11 @@ export default function AIPage() {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMsg.id
-            ? { ...m, content: data.reply || "No response from AI. Please try again." }
+            ? {
+                ...m,
+                content: data.reply || "No response from AI. Please try again.",
+                pendingActions: data.pendingActions?.length ? data.pendingActions : undefined,
+              }
             : m
         )
       );
@@ -365,6 +420,29 @@ export default function AIPage() {
                     ) : (
                       <div className="whitespace-pre-wrap">{msg.content}</div>
                     )}
+                    {msg.role === "assistant" &&
+                      !msg.resolved &&
+                      msg.pendingActions &&
+                      msg.pendingActions.length > 0 && (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-8"
+                            onClick={() => confirmActions(msg.id)}
+                          >
+                            Confirm delete
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8"
+                            onClick={() => cancelActions(msg.id)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
                   </div>
                   {msg.role === "user" && (
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
