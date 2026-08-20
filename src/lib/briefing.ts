@@ -2,7 +2,17 @@ import { prisma } from "@/lib/db";
 import { listEvents } from "@/lib/google-calendar";
 import { isOllamaAvailable } from "@/lib/ollama";
 import { generateReply, isGeminiConfigured } from "@/lib/ai";
-import { startOfZonedDay, endOfZonedDay, addZonedDays, formatInTZ } from "@/lib/timezone";
+import { startOfZonedDay, endOfZonedDay, addZonedDays, formatInTZ, zonedParts, DEFAULT_TIMEZONE } from "@/lib/timezone";
+
+// Format a task due date, appending the time only when the task has one (a
+// due set to local midnight is treated as an all-day/date-only task).
+function formatDue(due: Date, opts: Intl.DateTimeFormatOptions, tz: string): string {
+  const base = formatInTZ(due, opts, tz);
+  const { hour, minute } = zonedParts(due, tz);
+  if (hour === 0 && minute === 0) return base;
+  const time = formatInTZ(due, { hour: "numeric", minute: "2-digit", hour12: true }, tz);
+  return `${base}, ${time}`;
+}
 
 function escapeHtml(text: string): string {
   return text
@@ -11,11 +21,20 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
+async function getUserTimezone(userId: string): Promise<string> {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { timezone: true },
+  });
+  return u?.timezone ?? DEFAULT_TIMEZONE;
+}
+
 export async function generateBriefing(userId: string): Promise<string> {
   const now = new Date();
-  const todayStart = startOfZonedDay(now);
-  const todayEnd = endOfZonedDay(now);
-  const weekEnd = endOfZonedDay(addZonedDays(now, 7));
+  const tz = await getUserTimezone(userId);
+  const todayStart = startOfZonedDay(now, tz);
+  const todayEnd = endOfZonedDay(now, tz);
+  const weekEnd = endOfZonedDay(addZonedDays(now, 7, tz), tz);
 
   const [openTasks, dueTodayTasks, dueWeekTasks, recentNotes, calendarResult, gmailAppts] =
     await Promise.all([
@@ -59,7 +78,7 @@ export async function generateBriefing(userId: string): Promise<string> {
   const { events, reauthRequired: calendarReauthRequired } = calendarResult;
 
   const lines: string[] = [];
-  lines.push(`<b>☀️ Daily Briefing — ${formatInTZ(now, { weekday: "long", month: "short", day: "numeric" })}</b>`);
+  lines.push(`<b>☀️ Daily Briefing — ${formatInTZ(now, { weekday: "long", month: "short", day: "numeric" }, tz)}</b>`);
   lines.push("");
 
   // Calendar events
@@ -70,7 +89,7 @@ export async function generateBriefing(userId: string): Promise<string> {
     lines.push("<b>📅 Today's Events</b>");
     for (const e of events) {
       const time = e.start.dateTime
-        ? formatInTZ(new Date(e.start.dateTime), { hour: "numeric", minute: "2-digit", hour12: true })
+        ? formatInTZ(new Date(e.start.dateTime), { hour: "numeric", minute: "2-digit", hour12: true }, tz)
         : "All day";
       lines.push(`  • ${time} — ${escapeHtml(e.summary ?? "(No title)")}`);
     }
@@ -94,7 +113,12 @@ export async function generateBriefing(userId: string): Promise<string> {
     lines.push("<b>✅ Due Today</b>");
     for (const t of dueTodayTasks) {
       const icon = priorityIcon(t.priority);
-      lines.push(`  ${icon} ${escapeHtml(t.title)}`);
+      const { hour, minute } = zonedParts(t.dueAt!, tz);
+      const at =
+        hour === 0 && minute === 0
+          ? ""
+          : ` — ${formatInTZ(t.dueAt!, { hour: "numeric", minute: "2-digit", hour12: true }, tz)}`;
+      lines.push(`  ${icon} ${escapeHtml(t.title)}${at}`);
     }
     lines.push("");
   }
@@ -103,7 +127,7 @@ export async function generateBriefing(userId: string): Promise<string> {
   if (dueWeekTasks.length > 0) {
     lines.push("<b>📋 Coming Up</b>");
     for (const t of dueWeekTasks) {
-      const day = formatInTZ(t.dueAt!, { weekday: "short", month: "short", day: "numeric" });
+      const day = formatDue(t.dueAt!, { weekday: "short", month: "short", day: "numeric" }, tz);
       lines.push(`  • ${escapeHtml(t.title)} — ${day}`);
     }
     lines.push("");
@@ -135,6 +159,7 @@ export async function generateBriefing(userId: string): Promise<string> {
 }
 
 export async function generateTaskList(userId: string): Promise<string> {
+  const tz = await getUserTimezone(userId);
   const tasks = await prisma.task.findMany({
     where: { userId, status: { not: "completed" } },
     orderBy: [{ priority: "desc" }, { dueAt: "asc" }],
@@ -146,13 +171,14 @@ export async function generateTaskList(userId: string): Promise<string> {
   const lines = [`<b>✅ Open Tasks (${tasks.length})</b>`, ""];
   for (const t of tasks) {
     const icon = priorityIcon(t.priority);
-    const due = t.dueAt ? ` — ${formatInTZ(t.dueAt, { month: "short", day: "numeric" })}` : "";
+    const due = t.dueAt ? ` — ${formatDue(t.dueAt, { month: "short", day: "numeric" }, tz)}` : "";
     lines.push(`${icon} ${escapeHtml(t.title)}${due}`);
   }
   return lines.join("\n");
 }
 
 export async function generateNoteList(userId: string): Promise<string> {
+  const tz = await getUserTimezone(userId);
   const notes = await prisma.note.findMany({
     where: { userId, archivedAt: null },
     orderBy: { updatedAt: "desc" },
@@ -165,7 +191,7 @@ export async function generateNoteList(userId: string): Promise<string> {
   const lines = [`<b>📝 Recent Notes</b>`, ""];
   for (const n of notes) {
     const tags = n.tags.map((t: { tag: string }) => `#${t.tag}`).join(" ");
-    const date = formatInTZ(n.updatedAt, { month: "short", day: "numeric" });
+    const date = formatInTZ(n.updatedAt, { month: "short", day: "numeric" }, tz);
     lines.push(`• <b>${escapeHtml(n.title)}</b> — ${date}`);
     if (tags) lines.push(`  ${tags}`);
   }

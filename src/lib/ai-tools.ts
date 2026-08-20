@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { createEvent, updateEvent, deleteEvent } from "@/lib/google-calendar";
 import type { ChatMessage } from "@/lib/ollama";
+import { wallTimeToInstant, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 // Tool calling for the AI chat: lets the assistant create/edit/complete/delete
 // the user's tasks, notes, and calendar events. Every executor is scoped to the
@@ -8,7 +9,6 @@ import type { ChatMessage } from "@/lib/ollama";
 // confirm with the user first). Uses the OpenAI-compatible chat-completions API,
 // which both Groq and Gemini speak, so one loop serves both providers.
 
-const TIMEZONE = process.env.USER_TIMEZONE ?? "Asia/Manila";
 const MAX_TOOL_ROUNDS = 6;
 
 // Deletes are hard-gated: the server never executes them inline. It returns a
@@ -108,9 +108,16 @@ function enumStr(description: string, values: string[]) {
 
 type ToolResult = Record<string, unknown>;
 
-function parseDate(v: unknown): Date | null {
+function parseDate(v: unknown, tz: string): Date | null {
   if (typeof v !== "string" || !v || v.toLowerCase() === "none") return null;
-  const d = new Date(v);
+  const s = v.trim();
+  // A naive date / date-time (no timezone designator) is interpreted in the
+  // user's timezone; an offset-bearing string (…Z / …+08:00) is taken as-is.
+  const naive = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2})(?::\d{2})?)?$/.exec(s);
+  if (naive) {
+    return wallTimeToInstant(naive[1], naive[2] ?? null, tz);
+  }
+  const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
 
@@ -120,7 +127,7 @@ function addOneDay(ymd: string): string {
   return dt.toISOString().slice(0, 10);
 }
 
-function buildEventInput(a: Record<string, unknown>) {
+function buildEventInput(a: Record<string, unknown>, tz: string) {
   const summary = String(a.summary ?? "");
   const location = a.location ? String(a.location) : undefined;
   const description = a.description ? String(a.description) : undefined;
@@ -130,7 +137,7 @@ function buildEventInput(a: Record<string, unknown>) {
     return { summary, location, description, start: { date: start }, end: { date: end <= start ? addOneDay(start) : end } };
   }
   const end = a.end ? String(a.end) : start;
-  return { summary, location, description, start: { dateTime: start, timeZone: TIMEZONE }, end: { dateTime: end, timeZone: TIMEZONE } };
+  return { summary, location, description, start: { dateTime: start, timeZone: tz }, end: { dateTime: end, timeZone: tz } };
 }
 
 export async function executeTool(
@@ -139,6 +146,12 @@ export async function executeTool(
   args: Record<string, unknown>
 ): Promise<ToolResult> {
   try {
+    const userRow = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    });
+    const tz = userRow?.timezone ?? DEFAULT_TIMEZONE;
+
     switch (name) {
       case "create_task": {
         const t = await prisma.task.create({
@@ -146,7 +159,7 @@ export async function executeTool(
             userId,
             title: String(args.title),
             priority: (args.priority as string) ?? "medium",
-            dueAt: parseDate(args.dueAt),
+            dueAt: parseDate(args.dueAt, tz),
             description: args.description ? String(args.description) : null,
           },
         });
@@ -157,7 +170,7 @@ export async function executeTool(
         if (args.title !== undefined) data.title = String(args.title);
         if (args.priority !== undefined) data.priority = String(args.priority);
         if (args.description !== undefined) data.description = String(args.description);
-        if (args.dueAt !== undefined) data.dueAt = parseDate(args.dueAt);
+        if (args.dueAt !== undefined) data.dueAt = parseDate(args.dueAt, tz);
         if (args.status !== undefined) {
           data.status = String(args.status);
           if (args.status === "completed") data.completedAt = new Date();
@@ -200,11 +213,11 @@ export async function executeTool(
         return r.count ? { ok: true } : { ok: false, error: "Note not found" };
       }
       case "create_event": {
-        const e = await createEvent(userId, buildEventInput(args));
+        const e = await createEvent(userId, buildEventInput(args, tz));
         return { ok: true, id: e.id, summary: e.summary };
       }
       case "update_event": {
-        const e = await updateEvent(userId, String(args.eventId), buildEventInput(args));
+        const e = await updateEvent(userId, String(args.eventId), buildEventInput(args, tz));
         return { ok: true, id: e.id, summary: e.summary };
       }
       case "delete_event": {

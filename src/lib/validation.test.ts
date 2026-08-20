@@ -5,6 +5,7 @@ import {
   optEnum,
   optTags,
   optDate,
+  parseLocalDue,
   isValidHm,
   parseCalendarEvent,
   ValidationError,
@@ -78,6 +79,26 @@ describe("optDate", () => {
   });
   it("rejects garbage", () => {
     expect(() => optDate("not-a-date", "D")).toThrow(/not a valid date/);
+  });
+});
+
+describe("parseLocalDue", () => {
+  it("undefined stays undefined, null/empty clears", () => {
+    expect(parseLocalDue(undefined)).toBeUndefined();
+    expect(parseLocalDue(null)).toBeNull();
+    expect(parseLocalDue("")).toBeNull();
+  });
+  it("parses a date-only value (all-day)", () => {
+    expect(parseLocalDue("2026-08-21")).toEqual({ date: "2026-08-21", time: null });
+  });
+  it("parses a date + time value", () => {
+    expect(parseLocalDue("2026-08-21T15:30")).toEqual({ date: "2026-08-21", time: "15:30" });
+    expect(parseLocalDue("2026-08-21 15:30")).toEqual({ date: "2026-08-21", time: "15:30" });
+  });
+  it("rejects malformed values", () => {
+    expect(() => parseLocalDue("21-08-2026")).toThrow(ValidationError);
+    expect(() => parseLocalDue("2026-08-21T99:99")).toThrow(ValidationError);
+    expect(() => parseLocalDue(12345)).toThrow(ValidationError);
   });
 });
 

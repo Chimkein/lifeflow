@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { fetchRecentEmails, type GmailEmail } from "@/lib/google-gmail";
 import { chatComplete, isOllamaAvailable } from "@/lib/ollama";
-import { zonedYmd } from "@/lib/timezone";
+import { zonedYmd, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 interface DetectedAppointment {
   emailIndex: number;
@@ -48,7 +48,8 @@ Example response:
 
 async function detectAppointments(
   emails: GmailEmail[],
-  model: string
+  model: string,
+  tz: string
 ): Promise<DetectedAppointment[]> {
   if (emails.length === 0) return [];
 
@@ -59,7 +60,7 @@ async function detectAppointments(
     )
     .join("\n\n");
 
-  const today = zonedYmd(new Date());
+  const today = zonedYmd(new Date(), tz);
 
   const response = await chatComplete(model, [
     { role: "system", content: DETECTION_PROMPT },
@@ -103,7 +104,7 @@ async function detectAppointments(
 export async function syncGmailAppointments(userId: string): Promise<number> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { gmailSyncEnabled: true, ollamaModel: true },
+    select: { gmailSyncEnabled: true, ollamaModel: true, timezone: true },
   });
 
   if (!user?.gmailSyncEnabled) return 0;
@@ -148,7 +149,11 @@ export async function syncGmailAppointments(userId: string): Promise<number> {
     return 0;
   }
 
-  const detected = await detectAppointments(newEmails, user.ollamaModel);
+  const detected = await detectAppointments(
+    newEmails,
+    user.ollamaModel,
+    user.timezone ?? DEFAULT_TIMEZONE
+  );
 
   if (detected.length > 0) {
     await prisma.gmailAppointment.createMany({

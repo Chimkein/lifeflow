@@ -7,6 +7,8 @@ import {
   formatInTZ,
   zonedYmd,
   zonedHm,
+  wallTimeToInstant,
+  isValidTimeZone,
 } from "./timezone";
 
 // This is the trustworthy oracle for the timezone rework.
@@ -121,6 +123,63 @@ describe("America/New_York (DST fall-back 2026-11-01)", () => {
     const after = addZonedDays(before, 1, NY);
     expect(zonedParts(after, NY)).toMatchObject({ month: 3, day: 8, hour: 7 });
     expect(after.toISOString()).toBe("2026-03-08T11:00:00.000Z");
+  });
+});
+
+describe("wallTimeToInstant (task time in a chosen zone)", () => {
+  const LA = "America/Los_Angeles";
+  const GMT = "Etc/UTC";
+
+  it("anchors a PDT wall-clock (summer, UTC-7) to the right instant", () => {
+    // Aug 21 3:00 PM PDT (UTC-7) == 2026-08-21T22:00:00Z.
+    expect(wallTimeToInstant("2026-08-21", "15:00", LA)!.toISOString()).toBe(
+      "2026-08-21T22:00:00.000Z",
+    );
+  });
+
+  it("anchors a PST wall-clock (winter, UTC-8) to the right instant", () => {
+    // Jan 15 9:00 AM PST (UTC-8) == 2026-01-15T17:00:00Z.
+    expect(wallTimeToInstant("2026-01-15", "09:00", LA)!.toISOString()).toBe(
+      "2026-01-15T17:00:00.000Z",
+    );
+  });
+
+  it("treats GMT/UTC wall-clock as the instant itself", () => {
+    expect(wallTimeToInstant("2026-08-21", "15:00", GMT)!.toISOString()).toBe(
+      "2026-08-21T15:00:00.000Z",
+    );
+  });
+
+  it("defaults a missing time to local midnight (all-day task)", () => {
+    // Manila midnight on Aug 21 == 2026-08-20T16:00:00Z.
+    expect(wallTimeToInstant("2026-08-21", null, "Asia/Manila")!.toISOString()).toBe(
+      "2026-08-20T16:00:00.000Z",
+    );
+  });
+
+  it("round-trips a stored instant back to the same wall-clock parts", () => {
+    const inst = wallTimeToInstant("2026-08-21", "15:00", LA)!;
+    expect(zonedParts(inst, LA)).toMatchObject({ year: 2026, month: 8, day: 21, hour: 15, minute: 0 });
+  });
+
+  it("rejects malformed date/time strings", () => {
+    expect(wallTimeToInstant("2026-8-21", "15:00", LA)).toBeNull();
+    expect(wallTimeToInstant("2026-08-21", "25:00", LA)).toBeNull();
+    expect(wallTimeToInstant("garbage", null, LA)).toBeNull();
+  });
+});
+
+describe("isValidTimeZone", () => {
+  it("accepts real IANA zones", () => {
+    expect(isValidTimeZone("America/Los_Angeles")).toBe(true);
+    expect(isValidTimeZone("Etc/UTC")).toBe(true);
+    expect(isValidTimeZone("Asia/Manila")).toBe(true);
+  });
+  it("rejects junk", () => {
+    expect(isValidTimeZone("Mars/Phobos")).toBe(false);
+    expect(isValidTimeZone("")).toBe(false);
+    expect(isValidTimeZone(42)).toBe(false);
+    expect(isValidTimeZone(null)).toBe(false);
   });
 });
 

@@ -18,14 +18,15 @@ import {
   endOfZonedDay,
   addZonedDays,
   formatInTZ,
+  DEFAULT_TIMEZONE,
 } from "@/lib/timezone";
 import Link from "next/link";
 import { AppointmentActions } from "@/components/dashboard/appointment-actions";
 import { OnboardingCard } from "@/components/dashboard/onboarding-card";
 import { DashboardTasks } from "@/components/dashboard/dashboard-tasks";
 
-function getGreeting() {
-  const hour = zonedParts(new Date()).hour;
+function getGreeting(tz: string) {
+  const hour = zonedParts(new Date(), tz).hour;
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
@@ -36,6 +37,15 @@ export default async function DashboardPage() {
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
   const userId = session?.user?.id;
 
+  const tz = userId
+    ? (
+        await prisma.user.findUnique({
+          where: { id: userId },
+          select: { timezone: true },
+        })
+      )?.timezone ?? DEFAULT_TIMEZONE
+    : DEFAULT_TIMEZONE;
+
   let openTasks = 0;
   let noteCount = 0;
   let upcomingCount = 0;
@@ -45,9 +55,9 @@ export default async function DashboardPage() {
 
   if (userId) {
     const now = new Date();
-    const todayStart = startOfZonedDay(now);
-    const todayEnd = endOfZonedDay(now);
-    const weekEnd = endOfZonedDay(addZonedDays(now, 7));
+    const todayStart = startOfZonedDay(now, tz);
+    const todayEnd = endOfZonedDay(now, tz);
+    const weekEnd = endOfZonedDay(addZonedDays(now, 7, tz), tz);
 
     const [tasks, notes, upcoming, recent, gmailAppts, taskItems] = await Promise.all([
       prisma.task.count({
@@ -112,7 +122,7 @@ export default async function DashboardPage() {
     weekday: "long",
     month: "long",
     day: "numeric",
-  });
+  }, tz);
 
   const stats = [
     {
@@ -149,7 +159,7 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-1">
         <p className="text-sm font-medium text-muted-foreground">{today}</p>
         <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-          {getGreeting()}, {firstName}
+          {getGreeting(tz)}, {firstName}
         </h1>
       </div>
 
@@ -257,7 +267,7 @@ export default async function DashboardPage() {
           {/* Tasks + Notes */}
           <div className="grid gap-6 sm:grid-cols-2">
             {/* Tasks — sortable list */}
-            <DashboardTasks tasks={taskList} openCount={openTasks} />
+            <DashboardTasks tasks={taskList} openCount={openTasks} timezone={tz} />
 
             {/* Recent Notes */}
             <Card>
@@ -296,7 +306,7 @@ export default async function DashboardPage() {
                         <p className="text-sm font-medium">{note.title}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <span className="text-xs text-muted-foreground">
-                            {formatInTZ(note.updatedAt, { month: "short", day: "numeric" })}
+                            {formatInTZ(note.updatedAt, { month: "short", day: "numeric" }, tz)}
                           </span>
                           {note.tags.slice(0, 2).map((t) => (
                             <Badge
