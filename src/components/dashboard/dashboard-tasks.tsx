@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckSquare, ArrowUpRight } from "lucide-react";
-import { format, isPast, isToday } from "date-fns";
+import { formatInTZ, zonedYmd, zonedParts } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
 export interface DashboardTask {
@@ -41,12 +41,37 @@ function byDue(a: DashboardTask, b: DashboardTask) {
 
 const LIMIT = 5;
 
+// Compact due label in the user's timezone. `todayYmd` is computed once on the
+// server and passed in, so the server render and client hydration agree (no
+// day-boundary hydration mismatch). Overdue is day-granular.
+function dueLabel(
+  due: Date,
+  tz: string,
+  todayYmd: string
+): { text: string; tone: "overdue" | "today" | "normal" } {
+  const dueYmd = zonedYmd(due, tz);
+  const { hour, minute } = zonedParts(due, tz);
+  const hasTime = hour !== 0 || minute !== 0;
+  const time = hasTime
+    ? formatInTZ(due, { hour: "numeric", minute: "2-digit", hour12: true }, tz)
+    : "";
+  const date = formatInTZ(due, { month: "short", day: "numeric" }, tz);
+
+  if (dueYmd < todayYmd) return { text: "Overdue", tone: "overdue" };
+  if (dueYmd === todayYmd) return { text: time || "Today", tone: "today" };
+  return { text: time ? `${date}, ${time}` : date, tone: "normal" };
+}
+
 export function DashboardTasks({
   tasks,
   openCount,
+  timezone,
+  todayYmd,
 }: {
   tasks: DashboardTask[];
   openCount: number;
+  timezone: string;
+  todayYmd: string;
 }) {
   const [sort, setSort] = useState<SortKey>("due");
 
@@ -121,8 +146,7 @@ export function DashboardTasks({
           <ul className="space-y-0.5">
             {shown.map((task) => {
               const due = task.dueAt ? new Date(task.dueAt) : null;
-              const overdue = due && isPast(due) && !isToday(due);
-              const dueToday = due && isToday(due);
+              const label = due ? dueLabel(due, timezone, todayYmd) : null;
               return (
                 <li key={task.id}>
                   <Link
@@ -135,18 +159,18 @@ export function DashboardTasks({
                     >
                       {task.title}
                     </span>
-                    {due && (
+                    {label && (
                       <span
                         className={cn(
                           "shrink-0 text-xs font-medium",
-                          overdue
+                          label.tone === "overdue"
                             ? "text-destructive"
-                            : dueToday
+                            : label.tone === "today"
                               ? "text-warning"
                               : "text-muted-foreground"
                         )}
                       >
-                        {overdue ? "Overdue" : dueToday ? "Today" : format(due, "MMM d")}
+                        {label.text}
                       </span>
                     )}
                     <Badge

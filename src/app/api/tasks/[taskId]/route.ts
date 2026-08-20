@@ -6,11 +6,12 @@ import {
   reqString,
   optString,
   optEnum,
-  optDate,
+  parseLocalDue,
   LIMITS,
   TASK_PRIORITIES,
   TASK_STATUSES,
 } from "@/lib/validation";
+import { wallTimeToInstant, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 export async function GET(
   _req: NextRequest,
@@ -53,7 +54,7 @@ export async function PATCH(
   let description: string | undefined;
   let status: string | undefined;
   let priority: string | undefined;
-  let dueAt: Date | null | undefined;
+  let due: { date: string; time: string | null } | null | undefined;
   try {
     title =
       body.title === undefined
@@ -62,17 +63,35 @@ export async function PATCH(
     description = optString(body.description, "Description", LIMITS.taskDescription);
     status = optEnum(body.status, "Status", TASK_STATUSES);
     priority = optEnum(body.priority, "Priority", TASK_PRIORITIES);
-    dueAt = optDate(body.dueAt, "Due date");
+    due = parseLocalDue(body.dueAt);
   } catch (e) {
     return validationError(e) ?? NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
   const existing = await prisma.task.findFirst({
     where: { id: taskId, userId: session.user.id },
+    include: { user: { select: { timezone: true } } },
   });
 
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // undefined = field absent (skip); null = clear; object = set from wall-clock.
+  let dueAt: Date | null | undefined;
+  if (due === undefined) {
+    dueAt = undefined;
+  } else if (due === null) {
+    dueAt = null;
+  } else {
+    dueAt = wallTimeToInstant(
+      due.date,
+      due.time,
+      existing.user?.timezone ?? DEFAULT_TIMEZONE
+    );
+    if (!dueAt) {
+      return NextResponse.json({ error: "Invalid due date" }, { status: 400 });
+    }
   }
 
   const task = await prisma.task.update({

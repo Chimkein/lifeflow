@@ -14,6 +14,26 @@ import {
   LinkPicker,
   type LinkableItem,
 } from "@/components/shared/link-picker";
+import { useTimezone } from "@/components/timezone-provider";
+import { zonedParts } from "@/lib/timezone";
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+// Split a stored instant into the user's local date + time inputs. A local
+// midnight is treated as an all-day task (no time), matching how the app
+// renders and stores date-only tasks.
+function splitDue(
+  iso: string | null,
+  tz: string
+): { date: string; time: string } {
+  if (!iso) return { date: "", time: "" };
+  const { year, month, day, hour, minute } = zonedParts(new Date(iso), tz);
+  const date = `${year}-${pad(month)}-${pad(day)}`;
+  const time = hour === 0 && minute === 0 ? "" : `${pad(hour)}:${pad(minute)}`;
+  return { date, time };
+}
 
 export interface LinkedNote {
   taskId: string;
@@ -63,12 +83,15 @@ export function TaskDialog({
   onSave,
   onDelete,
 }: TaskDialogProps) {
-  const [form, setForm] = useState<TaskFormData>({
+  const tz = useTimezone();
+  const initialDue = splitDue(task?.dueAt ?? null, tz);
+  const [form, setForm] = useState({
     title: task?.title ?? "",
     description: task?.description ?? "",
     priority: task?.priority ?? "medium",
-    dueAt: task?.dueAt ? task.dueAt.slice(0, 10) : "",
   });
+  const [dueDate, setDueDate] = useState(initialDue.date);
+  const [dueTime, setDueTime] = useState(initialDue.time);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -112,9 +135,12 @@ export function TaskDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return;
+    // Combine into a naive local wall-clock string; the server anchors it to
+    // the user's timezone. Time without a date is ignored.
+    const dueAt = dueDate ? (dueTime ? `${dueDate}T${dueTime}` : dueDate) : "";
     setSaving(true);
     try {
-      await onSave(form);
+      await onSave({ ...form, dueAt });
       onClose();
     } finally {
       setSaving(false);
@@ -182,15 +208,28 @@ export function TaskDialog({
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
-                Due date
+                Due date &amp; time
               </label>
-              <Input
-                type="date"
-                value={form.dueAt}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, dueAt: e.target.value }))
-                }
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDueDate(v);
+                    if (!v) setDueTime(""); // clearing the date clears the time
+                  }}
+                  className="flex-1"
+                />
+                <Input
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  disabled={!dueDate}
+                  className="w-[7.5rem]"
+                  aria-label="Due time (optional)"
+                />
+              </div>
             </div>
           </div>
 

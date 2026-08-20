@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { listEvents } from "@/lib/google-calendar";
-import { startOfZonedDay, endOfZonedDay, addZonedDays, formatInTZ } from "@/lib/timezone";
+import { startOfZonedDay, endOfZonedDay, addZonedDays, formatInTZ, zonedParts, DEFAULT_TIMEZONE } from "@/lib/timezone";
 import { parseSSE } from "@/lib/groq-sse";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -125,10 +125,10 @@ export async function chatComplete(
 // Human-readable "when" for a calendar event: dated (so the AI can match a
 // specific date the user asks about), with time for timed events and an
 // "(all day)" marker for all-day ones.
-function formatEventWhen(start: { dateTime?: string; date?: string }): string {
+function formatEventWhen(start: { dateTime?: string; date?: string }, tz: string): string {
   if (start.dateTime) {
     const d = new Date(start.dateTime);
-    return `${formatInTZ(d, { weekday: "short", month: "short", day: "numeric", year: "numeric" })} at ${formatInTZ(d, { hour: "numeric", minute: "2-digit", hour12: true })}`;
+    return `${formatInTZ(d, { weekday: "short", month: "short", day: "numeric", year: "numeric" }, tz)} at ${formatInTZ(d, { hour: "numeric", minute: "2-digit", hour12: true }, tz)}`;
   }
   if (start.date) {
     // All-day dates are timezone-agnostic calendar dates; format from the parts
@@ -142,11 +142,16 @@ function formatEventWhen(start: { dateTime?: string; date?: string }): string {
 
 export async function buildUserContext(userId: string): Promise<string> {
   const now = new Date();
-  const todayStart = startOfZonedDay(now);
-  const todayEnd = endOfZonedDay(now);
+  const userRow = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { timezone: true },
+  });
+  const tz = userRow?.timezone ?? DEFAULT_TIMEZONE;
+  const todayStart = startOfZonedDay(now, tz);
+  const todayEnd = endOfZonedDay(now, tz);
   // Give the AI visibility into upcoming events (not just today) so it can
   // answer questions about future dates.
-  const calendarEnd = endOfZonedDay(addZonedDays(now, 365));
+  const calendarEnd = endOfZonedDay(addZonedDays(now, 365, tz), tz);
 
   const [tasks, notes, calendarResult, gmailAppts] = await Promise.all([
     prisma.task.findMany({
@@ -175,7 +180,7 @@ export async function buildUserContext(userId: string): Promise<string> {
 
   const lines: string[] = [];
   lines.push(
-    `Current date and time: ${formatInTZ(now, { weekday: "long", month: "long", day: "numeric", year: "numeric" })} at ${formatInTZ(now, { hour: "numeric", minute: "2-digit", hour12: true })}`
+    `Current date and time: ${formatInTZ(now, { weekday: "long", month: "long", day: "numeric", year: "numeric" }, tz)} at ${formatInTZ(now, { hour: "numeric", minute: "2-digit", hour12: true }, tz)} (${tz})`
   );
   lines.push("");
 
@@ -185,7 +190,7 @@ export async function buildUserContext(userId: string): Promise<string> {
   } else if (events.length > 0) {
     lines.push("CALENDAR EVENTS (from today, next 12 months):");
     for (const e of events.slice(0, 40)) {
-      lines.push(`- ${formatEventWhen(e.start)}: ${e.summary ?? "(No title)"} [event id: ${e.id ?? "?"}]`);
+      lines.push(`- ${formatEventWhen(e.start, tz)}: ${e.summary ?? "(No title)"} [event id: ${e.id ?? "?"}]`);
     }
     lines.push("");
   }
@@ -204,7 +209,16 @@ export async function buildUserContext(userId: string): Promise<string> {
   if (tasks.length > 0) {
     lines.push("OPEN TASKS:");
     for (const t of tasks) {
-      const due = t.dueAt ? ` (due ${formatInTZ(t.dueAt, { month: "short", day: "numeric" })})` : "";
+      let due = "";
+      if (t.dueAt) {
+        const { hour, minute } = zonedParts(t.dueAt, tz);
+        const datePart = formatInTZ(t.dueAt, { month: "short", day: "numeric" }, tz);
+        const timePart =
+          hour === 0 && minute === 0
+            ? ""
+            : `, ${formatInTZ(t.dueAt, { hour: "numeric", minute: "2-digit", hour12: true }, tz)}`;
+        due = ` (due ${datePart}${timePart})`;
+      }
       lines.push(`- [${t.priority}] ${t.title}${due} [id: ${t.id}]`);
     }
     lines.push("");
@@ -215,7 +229,7 @@ export async function buildUserContext(userId: string): Promise<string> {
     for (const n of notes) {
       const tags = n.tags.map((t: { tag: string }) => `#${t.tag}`).join(" ");
       const preview = n.content.slice(0, 100).replace(/\n/g, " ");
-      lines.push(`- "${n.title}" (${formatInTZ(n.updatedAt, { month: "short", day: "numeric" })})${tags ? ` ${tags}` : ""} [id: ${n.id}]`);
+      lines.push(`- "${n.title}" (${formatInTZ(n.updatedAt, { month: "short", day: "numeric" }, tz)})${tags ? ` ${tags}` : ""} [id: ${n.id}]`);
       if (preview) lines.push(`  ${preview}${n.content.length > 100 ? "..." : ""}`);
     }
   }

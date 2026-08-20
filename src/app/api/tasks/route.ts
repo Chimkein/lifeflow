@@ -6,10 +6,11 @@ import {
   reqString,
   optString,
   optEnum,
-  optDate,
+  parseLocalDue,
   LIMITS,
   TASK_PRIORITIES,
 } from "@/lib/validation";
+import { wallTimeToInstant, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -47,14 +48,27 @@ export async function POST(req: NextRequest) {
   let title: string;
   let description: string | undefined;
   let priority: string | undefined;
-  let dueAt: Date | null;
+  let due: { date: string; time: string | null } | null | undefined;
   try {
     title = reqString(body.title, "Title", LIMITS.taskTitle);
     description = optString(body.description, "Description", LIMITS.taskDescription);
     priority = optEnum(body.priority, "Priority", TASK_PRIORITIES);
-    dueAt = optDate(body.dueAt, "Due date") ?? null;
+    due = parseLocalDue(body.dueAt);
   } catch (e) {
     return validationError(e) ?? NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+
+  // Interpret the naive wall-clock in the user's saved timezone.
+  let dueAt: Date | null = null;
+  if (due) {
+    const userRow = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { timezone: true },
+    });
+    dueAt = wallTimeToInstant(due.date, due.time, userRow?.timezone ?? DEFAULT_TIMEZONE);
+    if (!dueAt) {
+      return NextResponse.json({ error: "Invalid due date" }, { status: 400 });
+    }
   }
 
   const task = await prisma.task.create({

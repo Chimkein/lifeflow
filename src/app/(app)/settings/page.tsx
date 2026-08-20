@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { MessageCircle, Link2, Unlink, Clock, Bot, Cpu, Sparkles, Mail, RefreshCw, LogIn, SunMedium, Sun, Moon, Monitor } from "lucide-react";
+import { MessageCircle, Link2, Unlink, Clock, Bot, Cpu, Sparkles, Mail, RefreshCw, LogIn, SunMedium, Sun, Moon, Monitor, Globe } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+import { COMMON_TIMEZONES, formatInTZ, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: Sun },
@@ -54,7 +56,10 @@ export default function SettingsPage() {
   const [gmailSettings, setGmailSettings] = useState<GmailSettings | null>(null);
   const [gmailSaving, setGmailSaving] = useState(false);
   const [gmailSyncing, setGmailSyncing] = useState(false);
+  const [timezone, setTimezone] = useState<string | null>(null);
+  const [tzSaving, setTzSaving] = useState(false);
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -65,11 +70,12 @@ export default function SettingsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [telegramRes, statusRes, aiSettingsRes, gmailRes] = await Promise.allSettled([
+      const [telegramRes, statusRes, aiSettingsRes, gmailRes, userRes] = await Promise.allSettled([
         fetch("/api/telegram/settings"),
         fetch("/api/ai/status"),
         fetch("/api/ai/settings"),
         fetch("/api/gmail/settings"),
+        fetch("/api/user/settings"),
       ]);
       if (cancelled) return;
 
@@ -87,10 +93,38 @@ export default function SettingsPage() {
       if (gmailRes.status === "fulfilled") {
         setGmailSettings(await gmailRes.value.json());
       }
+      if (userRes.status === "fulfilled") {
+        const data = await userRes.value.json();
+        setTimezone(data.timezone ?? null);
+      }
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const handleSaveTimezone = async (tz: string) => {
+    const prev = timezone;
+    setTimezone(tz);
+    setTzSaving(true);
+    try {
+      const res = await fetch("/api/user/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: tz }),
+      });
+      if (!res.ok) {
+        setTimezone(prev);
+      } else {
+        // Re-run the (app) server layout so TimezoneProvider hands the new zone
+        // to Tasks/Dashboard; without this they keep the old zone until reload.
+        router.refresh();
+      }
+    } catch {
+      setTimezone(prev);
+    } finally {
+      setTzSaving(false);
+    }
+  };
 
   const handleToggleGmailSync = async () => {
     if (!gmailSettings) return;
@@ -276,6 +310,46 @@ export default function SettingsPage() {
             ) : (
               <div className="h-10 w-[220px] animate-pulse rounded-lg bg-muted" />
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Timezone */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
+            <Globe className="h-5 w-5 text-primary" />
+            Timezone
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 rounded-lg bg-muted/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium">Your timezone</p>
+              <p className="text-xs text-muted-foreground">
+                Task times, briefings, and your schedule are shown in this zone.
+              </p>
+            </div>
+            <Select
+              value={timezone ?? ""}
+              onValueChange={(v) => { if (v && v !== timezone) handleSaveTimezone(v); }}
+              disabled={tzSaving || timezone === null}
+            >
+              <SelectTrigger className="w-full sm:max-w-[320px]">
+                <SelectValue placeholder="Select a timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                {timezone &&
+                  !COMMON_TIMEZONES.some((t) => t.value === timezone) && (
+                    <SelectItem value={timezone}>{timezone}</SelectItem>
+                  )}
+                {COMMON_TIMEZONES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -516,7 +590,7 @@ export default function SettingsPage() {
                     <p className="text-sm font-medium">Sync now</p>
                     <p className="text-xs text-muted-foreground">
                       {gmailSettings.gmailLastSyncAt
-                        ? `Last synced: ${new Date(gmailSettings.gmailLastSyncAt).toLocaleString()}`
+                        ? `Last synced: ${formatInTZ(new Date(gmailSettings.gmailLastSyncAt), { dateStyle: "medium", timeStyle: "short" }, timezone ?? DEFAULT_TIMEZONE)}`
                         : "Never synced"}
                     </p>
                   </div>

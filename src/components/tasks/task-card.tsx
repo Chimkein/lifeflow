@@ -2,9 +2,10 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, isPast, isToday } from "date-fns";
 import { Circle, CheckCircle2, Link2, CalendarClock } from "lucide-react";
 import type { TaskData } from "./task-dialog";
+import { useTimezone } from "@/components/timezone-provider";
+import { formatInTZ, zonedYmd, zonedParts } from "@/lib/timezone";
 
 interface TaskCardProps {
   task: TaskData;
@@ -20,10 +21,28 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
+  const tz = useTimezone();
   const isCompleted = task.status === "completed";
   const dueDate = task.dueAt ? new Date(task.dueAt) : null;
-  const isOverdue = dueDate && !isCompleted && isPast(dueDate) && !isToday(dueDate);
-  const isDueToday = dueDate && !isCompleted && isToday(dueDate);
+
+  let dueLabel: string | null = null;
+  let isOverdue = false;
+  let isDueToday = false;
+  if (dueDate) {
+    const todayYmd = zonedYmd(new Date(), tz);
+    const dueYmd = zonedYmd(dueDate, tz);
+    const { hour, minute } = zonedParts(dueDate, tz);
+    const hasTime = hour !== 0 || minute !== 0;
+    const timeStr = hasTime
+      ? formatInTZ(dueDate, { hour: "numeric", minute: "2-digit", hour12: true }, tz)
+      : "";
+    const dateStr = formatInTZ(dueDate, { month: "short", day: "numeric" }, tz);
+    isOverdue = !isCompleted && dueYmd < todayYmd;
+    isDueToday = !isCompleted && dueYmd === todayYmd;
+    if (isOverdue) dueLabel = timeStr ? `Overdue · ${dateStr}, ${timeStr}` : `Overdue · ${dateStr}`;
+    else if (isDueToday) dueLabel = timeStr ? `Today · ${timeStr}` : "Today";
+    else dueLabel = timeStr ? `${dateStr}, ${timeStr}` : dateStr;
+  }
 
   return (
     <Card
@@ -65,7 +84,7 @@ export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
             >
               {task.priority}
             </Badge>
-            {dueDate && (
+            {dueLabel && (
               <span
                 className={`flex items-center gap-1 text-xs font-medium ${
                   isOverdue
@@ -76,8 +95,7 @@ export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
                 }`}
               >
                 <CalendarClock className="h-3.5 w-3.5" />
-                {isOverdue ? "Overdue · " : isDueToday ? "Today · " : ""}
-                {format(dueDate, "MMM d")}
+                {dueLabel}
               </span>
             )}
             {(task.taskNotes?.length ?? 0) > 0 && (

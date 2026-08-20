@@ -26,6 +26,8 @@ model User {
   chatConversations ChatConversation[]
   gmailAppointments GmailAppointment[]
 
+  timezone             String   @default("Asia/Manila")
+
   ollamaModel          String   @default("openai/gpt-oss-20b")
   aiBriefingEnabled    Boolean  @default(false)
 

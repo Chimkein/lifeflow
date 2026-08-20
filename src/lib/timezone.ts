@@ -1,4 +1,35 @@
-const DEFAULT_TIMEZONE = process.env.USER_TIMEZONE ?? "Asia/Manila";
+export const DEFAULT_TIMEZONE = process.env.USER_TIMEZONE ?? "Asia/Manila";
+
+// A curated shortlist for the settings dropdown. Values are IANA zone ids
+// (DST-correct automatically — e.g. America/Los_Angeles is PDT in summer, PST
+// in winter). Users can still store any valid IANA zone via the API.
+export const COMMON_TIMEZONES: { value: string; label: string }[] = [
+  { value: "Etc/UTC", label: "GMT / UTC" },
+  { value: "America/Los_Angeles", label: "Pacific Time — PDT/PST (Los Angeles)" },
+  { value: "America/Denver", label: "Mountain Time — MDT/MST (Denver)" },
+  { value: "America/Chicago", label: "Central Time — CDT/CST (Chicago)" },
+  { value: "America/New_York", label: "Eastern Time — EDT/EST (New York)" },
+  { value: "Europe/London", label: "London — GMT/BST" },
+  { value: "Europe/Paris", label: "Central Europe — CET/CEST (Paris)" },
+  { value: "Asia/Dubai", label: "Gulf — GST (Dubai)" },
+  { value: "Asia/Kolkata", label: "India — IST (Kolkata)" },
+  { value: "Asia/Singapore", label: "Singapore — SGT" },
+  { value: "Asia/Manila", label: "Philippines — PHT (Manila)" },
+  { value: "Asia/Tokyo", label: "Japan — JST (Tokyo)" },
+  { value: "Australia/Sydney", label: "Sydney — AEDT/AEST" },
+  { value: "Pacific/Auckland", label: "Auckland — NZDT/NZST" },
+];
+
+// True if `tz` is a valid IANA timezone the runtime recognizes.
+export function isValidTimeZone(tz: unknown): tz is string {
+  if (typeof tz !== "string" || !tz) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 interface ZonedParts {
   year: number;
@@ -81,6 +112,47 @@ function wallTimeToUTC(
   const candidate = naiveUTC - offset1;
   const offset2 = offsetAt(new Date(candidate), timeZone);
   return new Date(naiveUTC - offset2);
+}
+
+/**
+ * Interpret a naive local date (+ optional time) as a real UTC instant in the
+ * given zone. `date` is "YYYY-MM-DD"; `time` is "HH:mm" (defaults to midnight,
+ * i.e. a date-only/all-day task). Returns null if the strings don't parse.
+ *
+ * This is how a user-picked "Aug 21, 3:00 PM" becomes a stored instant: the
+ * wall-clock is anchored to the user's chosen timezone, not the server's or the
+ * browser's — so a schedule set in one zone reads correctly from any device.
+ */
+export function wallTimeToInstant(
+  date: string,
+  time: string | null | undefined,
+  timeZone: string = DEFAULT_TIMEZONE,
+): Date | null {
+  const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!dm) return null;
+  const y = Number(dm[1]);
+  const mo = Number(dm[2]);
+  const da = Number(dm[3]);
+  // Reject impossible calendar dates (Feb 31, month 13, …) instead of letting
+  // Date.UTC silently roll them over into a different day.
+  const probe = new Date(Date.UTC(y, mo - 1, da));
+  if (
+    probe.getUTCFullYear() !== y ||
+    probe.getUTCMonth() !== mo - 1 ||
+    probe.getUTCDate() !== da
+  ) {
+    return null;
+  }
+  let hour = 0;
+  let minute = 0;
+  if (time) {
+    const tm = /^(\d{2}):(\d{2})$/.exec(time);
+    if (!tm) return null;
+    hour = Number(tm[1]);
+    minute = Number(tm[2]);
+    if (hour > 23 || minute > 59) return null;
+  }
+  return wallTimeToUTC(y, mo, da, hour, minute, 0, 0, timeZone);
 }
 
 // Wall-clock parts of an instant in the given IANA timezone.

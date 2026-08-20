@@ -120,6 +120,43 @@ export function isValidHm(v: unknown): v is string {
   return typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 }
 
+/**
+ * Parse a task due value sent as a naive local wall-clock string:
+ *   undefined      -> undefined (field absent; PATCH should skip it)
+ *   null | ""      -> null      (explicitly clear the due date)
+ *   "YYYY-MM-DD"           -> { date, time: null }  (all-day / date-only)
+ *   "YYYY-MM-DDTHH:mm"     -> { date, time }        (specific time)
+ * The caller converts {date,time} to a UTC instant in the user's timezone via
+ * wallTimeToInstant(). Throws ValidationError on any other shape.
+ */
+export function parseLocalDue(
+  v: unknown
+): { date: string; time: string | null } | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null || v === "") return null;
+  if (typeof v !== "string") {
+    throw new ValidationError("Due date must be a string");
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ]([01]\d|2[0-3]):([0-5]\d))?$/.exec(v.trim());
+  if (!m) {
+    throw new ValidationError(
+      "Due date must be YYYY-MM-DD or YYYY-MM-DDTHH:mm"
+    );
+  }
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const da = Number(m[3]);
+  const probe = new Date(Date.UTC(y, mo - 1, da));
+  if (
+    probe.getUTCFullYear() !== y ||
+    probe.getUTCMonth() !== mo - 1 ||
+    probe.getUTCDate() !== da
+  ) {
+    throw new ValidationError("Due date is not a real calendar date");
+  }
+  return { date: `${m[1]}-${m[2]}-${m[3]}`, time: m[4] ? `${m[4]}:${m[5]}` : null };
+}
+
 // ---- Google Calendar event shape ----------------------------------------
 
 type TimePoint = { dateTime?: string; date?: string; timeZone?: string };
