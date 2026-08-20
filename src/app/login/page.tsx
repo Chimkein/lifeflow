@@ -27,9 +27,11 @@ export default async function LoginPage() {
 
       <div className="relative w-full max-w-sm">
         <div className="flex flex-col items-center gap-4 text-center">
-          <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-linear-to-br from-[oklch(0.62_0.2_340)] to-[oklch(0.44_0.18_320)] font-heading text-3xl font-semibold text-white shadow-lg">
-            L
-          </span>
+          <span
+            aria-hidden
+            className="h-24 w-24 bg-contain bg-center bg-no-repeat drop-shadow-xl"
+            style={{ backgroundImage: "url('/logo.png')" }}
+          />
           <div className="space-y-1.5">
             <h1 className="font-heading text-4xl font-semibold tracking-tight">
               LifeFlow

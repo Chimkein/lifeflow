@@ -27,7 +27,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -68,14 +67,14 @@ export function AppSidebar() {
 
   const accountItems = () => (
     <>
-      <DropdownMenuLabel className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 px-1.5 py-1.5">
         <span className="truncate text-sm font-medium text-foreground">
           {user?.name ?? "User"}
         </span>
-        <span className="truncate text-xs font-normal text-muted-foreground">
+        <span className="truncate text-xs text-muted-foreground">
           {user?.email ?? ""}
         </span>
-      </DropdownMenuLabel>
+      </div>
       <DropdownMenuSeparator />
       <DropdownMenuItem render={<Link href="/settings" />}>
         <Settings className="h-4 w-4" />
@@ -112,11 +111,15 @@ export function AppSidebar() {
                 <Link
                   href="/dashboard"
                   aria-label="LifeFlow home"
-                  className="mb-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-[oklch(0.62_0.2_340)] to-[oklch(0.44_0.18_320)] font-heading text-lg font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5"
+                  className="mb-1 flex h-11 w-11 items-center justify-center transition-transform hover:-translate-y-0.5"
                 />
               }
             >
-              L
+              <span
+                aria-hidden
+                className="h-11 w-11 bg-contain bg-center bg-no-repeat drop-shadow-md"
+                style={{ backgroundImage: "url('/logo.png')" }}
+              />
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={10}>
               LifeFlow
