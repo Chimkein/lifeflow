@@ -25,6 +25,7 @@ import Link from "next/link";
 import { AppointmentActions } from "@/components/dashboard/appointment-actions";
 import { OnboardingCard } from "@/components/dashboard/onboarding-card";
 import { DashboardTasks } from "@/components/dashboard/dashboard-tasks";
+import { DashboardClock } from "@/components/dashboard/dashboard-clock";
 
 function getGreeting(tz: string) {
   const hour = zonedParts(new Date(), tz).hour;
@@ -157,11 +158,14 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-8 lg:min-h-[calc(100svh-4rem)]">
       {/* Greeting */}
-      <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-muted-foreground">{today}</p>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-          {getGreeting(tz)}, {firstName}
-        </h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-medium text-muted-foreground">{today}</p>
+          <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+            {getGreeting(tz)}, {firstName}
+          </h1>
+        </div>
+        <DashboardClock />
       </div>
 
       <OnboardingCard />
