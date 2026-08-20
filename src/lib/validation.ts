@@ -137,13 +137,24 @@ export function parseLocalDue(
   if (typeof v !== "string") {
     throw new ValidationError("Due date must be a string");
   }
-  const m = /^(\d{4}-\d{2}-\d{2})(?:[T ]([01]\d|2[0-3]):([0-5]\d))?$/.exec(v.trim());
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ]([01]\d|2[0-3]):([0-5]\d))?$/.exec(v.trim());
   if (!m) {
     throw new ValidationError(
       "Due date must be YYYY-MM-DD or YYYY-MM-DDTHH:mm"
     );
   }
-  return { date: m[1], time: m[2] ? `${m[2]}:${m[3]}` : null };
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const da = Number(m[3]);
+  const probe = new Date(Date.UTC(y, mo - 1, da));
+  if (
+    probe.getUTCFullYear() !== y ||
+    probe.getUTCMonth() !== mo - 1 ||
+    probe.getUTCDate() !== da
+  ) {
+    throw new ValidationError("Due date is not a real calendar date");
+  }
+  return { date: `${m[1]}-${m[2]}-${m[3]}`, time: m[4] ? `${m[4]}:${m[5]}` : null };
 }
 
 // ---- Google Calendar event shape ----------------------------------------

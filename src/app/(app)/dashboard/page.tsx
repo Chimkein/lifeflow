@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import {
   zonedParts,
+  zonedYmd,
   startOfZonedDay,
   endOfZonedDay,
   addZonedDays,
@@ -267,7 +268,12 @@ export default async function DashboardPage() {
           {/* Tasks + Notes */}
           <div className="grid gap-6 sm:grid-cols-2">
             {/* Tasks — sortable list */}
-            <DashboardTasks tasks={taskList} openCount={openTasks} timezone={tz} />
+            <DashboardTasks
+              tasks={taskList}
+              openCount={openTasks}
+              timezone={tz}
+              todayYmd={zonedYmd(new Date(), tz)}
+            />
 
             {/* Recent Notes */}
             <Card>

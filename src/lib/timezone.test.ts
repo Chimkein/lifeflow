@@ -167,6 +167,12 @@ describe("wallTimeToInstant (task time in a chosen zone)", () => {
     expect(wallTimeToInstant("2026-08-21", "25:00", LA)).toBeNull();
     expect(wallTimeToInstant("garbage", null, LA)).toBeNull();
   });
+
+  it("rejects impossible calendar dates instead of rolling them over", () => {
+    expect(wallTimeToInstant("2026-02-31", null, LA)).toBeNull();
+    expect(wallTimeToInstant("2026-13-01", null, LA)).toBeNull();
+    expect(wallTimeToInstant("2026-00-10", null, LA)).toBeNull();
+  });
 });
 
 describe("isValidTimeZone", () => {

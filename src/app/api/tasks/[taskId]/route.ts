@@ -89,6 +89,9 @@ export async function PATCH(
       due.time,
       existing.user?.timezone ?? DEFAULT_TIMEZONE
     );
+    if (!dueAt) {
+      return NextResponse.json({ error: "Invalid due date" }, { status: 400 });
+    }
   }
 
   const task = await prisma.task.update({

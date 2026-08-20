@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import { DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 // The user's saved IANA timezone, provided by the (app) server layout so any
-// client component can render schedule times in the user's own zone rather than
-// the browser's. Falls back to the browser zone if somehow unset.
-const TimezoneContext = createContext<string>("Asia/Manila");
+// client component can render schedule times in the user's own zone. A consumer
+// rendered outside the provider falls back to the app default.
+const TimezoneContext = createContext<string>(DEFAULT_TIMEZONE);
 
 export function TimezoneProvider({
   timezone,

@@ -41,21 +41,24 @@ function byDue(a: DashboardTask, b: DashboardTask) {
 
 const LIMIT = 5;
 
-// Compact due label in the user's timezone: "Overdue", a time ("3:00 PM") for a
-// timed task due today, "Today" for an all-day task due today, otherwise the
-// date (with time appended when the task has one).
-function dueLabel(due: Date, tz: string): { text: string; tone: "overdue" | "today" | "normal" } {
-  const todayYmd = zonedYmd(new Date(), tz);
+// Compact due label in the user's timezone. `todayYmd` is computed once on the
+// server and passed in, so the server render and client hydration agree (no
+// day-boundary hydration mismatch). Overdue is day-granular.
+function dueLabel(
+  due: Date,
+  tz: string,
+  todayYmd: string
+): { text: string; tone: "overdue" | "today" | "normal" } {
   const dueYmd = zonedYmd(due, tz);
   const { hour, minute } = zonedParts(due, tz);
   const hasTime = hour !== 0 || minute !== 0;
   const time = hasTime
     ? formatInTZ(due, { hour: "numeric", minute: "2-digit", hour12: true }, tz)
     : "";
+  const date = formatInTZ(due, { month: "short", day: "numeric" }, tz);
 
   if (dueYmd < todayYmd) return { text: "Overdue", tone: "overdue" };
   if (dueYmd === todayYmd) return { text: time || "Today", tone: "today" };
-  const date = formatInTZ(due, { month: "short", day: "numeric" }, tz);
   return { text: time ? `${date}, ${time}` : date, tone: "normal" };
 }
 
@@ -63,10 +66,12 @@ export function DashboardTasks({
   tasks,
   openCount,
   timezone,
+  todayYmd,
 }: {
   tasks: DashboardTask[];
   openCount: number;
   timezone: string;
+  todayYmd: string;
 }) {
   const [sort, setSort] = useState<SortKey>("due");
 
@@ -141,7 +146,7 @@ export function DashboardTasks({
           <ul className="space-y-0.5">
             {shown.map((task) => {
               const due = task.dueAt ? new Date(task.dueAt) : null;
-              const label = due ? dueLabel(due, timezone) : null;
+              const label = due ? dueLabel(due, timezone, todayYmd) : null;
               return (
                 <li key={task.id}>
                   <Link

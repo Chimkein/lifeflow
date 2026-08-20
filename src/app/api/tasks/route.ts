@@ -66,6 +66,9 @@ export async function POST(req: NextRequest) {
       select: { timezone: true },
     });
     dueAt = wallTimeToInstant(due.date, due.time, userRow?.timezone ?? DEFAULT_TIMEZONE);
+    if (!dueAt) {
+      return NextResponse.json({ error: "Invalid due date" }, { status: 400 });
+    }
   }
 
   const task = await prisma.task.create({

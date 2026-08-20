@@ -108,17 +108,23 @@ function enumStr(description: string, values: string[]) {
 
 type ToolResult = Record<string, unknown>;
 
-function parseDate(v: unknown, tz: string): Date | null {
+// null  = clear the due date (absent value or explicit "none")
+// Date  = a resolved instant
+// undefined = the input was present but unparseable — caller should LEAVE the
+//   existing value untouched rather than wiping it.
+function parseDate(v: unknown, tz: string): Date | null | undefined {
   if (typeof v !== "string" || !v || v.toLowerCase() === "none") return null;
   const s = v.trim();
   // A naive date / date-time (no timezone designator) is interpreted in the
   // user's timezone; an offset-bearing string (…Z / …+08:00) is taken as-is.
-  const naive = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2})(?::\d{2})?)?$/.exec(s);
+  // Hours/minutes are range-checked so "25:00" doesn't slip through.
+  const naive = /^(\d{4}-\d{2}-\d{2})(?:[T ]([01]\d|2[0-3]):([0-5]\d)(?::\d{2})?)?$/.exec(s);
   if (naive) {
-    return wallTimeToInstant(naive[1], naive[2] ?? null, tz);
+    const inst = wallTimeToInstant(naive[1], naive[2] ? `${naive[2]}:${naive[3]}` : null, tz);
+    return inst ?? undefined; // invalid calendar date → skip, don't wipe
   }
   const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
+  return isNaN(d.getTime()) ? undefined : d;
 }
 
 function addOneDay(ymd: string): string {
@@ -159,7 +165,7 @@ export async function executeTool(
             userId,
             title: String(args.title),
             priority: (args.priority as string) ?? "medium",
-            dueAt: parseDate(args.dueAt, tz),
+            dueAt: parseDate(args.dueAt, tz) ?? null,
             description: args.description ? String(args.description) : null,
           },
         });
@@ -170,7 +176,10 @@ export async function executeTool(
         if (args.title !== undefined) data.title = String(args.title);
         if (args.priority !== undefined) data.priority = String(args.priority);
         if (args.description !== undefined) data.description = String(args.description);
-        if (args.dueAt !== undefined) data.dueAt = parseDate(args.dueAt, tz);
+        if (args.dueAt !== undefined) {
+          const pd = parseDate(args.dueAt, tz);
+          if (pd !== undefined) data.dueAt = pd; // skip on unparseable input
+        }
         if (args.status !== undefined) {
           data.status = String(args.status);
           if (args.status === "completed") data.completedAt = new Date();

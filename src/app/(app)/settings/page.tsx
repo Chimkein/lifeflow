@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { MessageCircle, Link2, Unlink, Clock, Bot, Cpu, Sparkles, Mail, RefreshCw, LogIn, SunMedium, Sun, Moon, Monitor, Globe } from "lucide-react";
 import { useTheme } from "next-themes";
-import { COMMON_TIMEZONES } from "@/lib/timezone";
+import { useRouter } from "next/navigation";
+import { COMMON_TIMEZONES, formatInTZ, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: Sun },
@@ -58,6 +59,7 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState<string | null>(null);
   const [tzSaving, setTzSaving] = useState(false);
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -110,7 +112,13 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ timezone: tz }),
       });
-      if (!res.ok) setTimezone(prev);
+      if (!res.ok) {
+        setTimezone(prev);
+      } else {
+        // Re-run the (app) server layout so TimezoneProvider hands the new zone
+        // to Tasks/Dashboard; without this they keep the old zone until reload.
+        router.refresh();
+      }
     } catch {
       setTimezone(prev);
     } finally {
@@ -582,7 +590,7 @@ export default function SettingsPage() {
                     <p className="text-sm font-medium">Sync now</p>
                     <p className="text-xs text-muted-foreground">
                       {gmailSettings.gmailLastSyncAt
-                        ? `Last synced: ${new Date(gmailSettings.gmailLastSyncAt).toLocaleString()}`
+                        ? `Last synced: ${formatInTZ(new Date(gmailSettings.gmailLastSyncAt), { dateStyle: "medium", timeStyle: "short" }, timezone ?? DEFAULT_TIMEZONE)}`
                         : "Never synced"}
                     </p>
                   </div>

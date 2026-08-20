@@ -130,6 +130,19 @@ export function wallTimeToInstant(
 ): Date | null {
   const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!dm) return null;
+  const y = Number(dm[1]);
+  const mo = Number(dm[2]);
+  const da = Number(dm[3]);
+  // Reject impossible calendar dates (Feb 31, month 13, …) instead of letting
+  // Date.UTC silently roll them over into a different day.
+  const probe = new Date(Date.UTC(y, mo - 1, da));
+  if (
+    probe.getUTCFullYear() !== y ||
+    probe.getUTCMonth() !== mo - 1 ||
+    probe.getUTCDate() !== da
+  ) {
+    return null;
+  }
   let hour = 0;
   let minute = 0;
   if (time) {
@@ -139,16 +152,7 @@ export function wallTimeToInstant(
     minute = Number(tm[2]);
     if (hour > 23 || minute > 59) return null;
   }
-  return wallTimeToUTC(
-    Number(dm[1]),
-    Number(dm[2]),
-    Number(dm[3]),
-    hour,
-    minute,
-    0,
-    0,
-    timeZone,
-  );
+  return wallTimeToUTC(y, mo, da, hour, minute, 0, 0, timeZone);
 }
 
 // Wall-clock parts of an instant in the given IANA timezone.

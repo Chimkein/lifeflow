@@ -32,15 +32,15 @@ export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
     const todayYmd = zonedYmd(new Date(), tz);
     const dueYmd = zonedYmd(dueDate, tz);
     const { hour, minute } = zonedParts(dueDate, tz);
-    const timeStr =
-      hour === 0 && minute === 0
-        ? ""
-        : formatInTZ(dueDate, { hour: "numeric", minute: "2-digit", hour12: true }, tz);
+    const hasTime = hour !== 0 || minute !== 0;
+    const timeStr = hasTime
+      ? formatInTZ(dueDate, { hour: "numeric", minute: "2-digit", hour12: true }, tz)
+      : "";
     const dateStr = formatInTZ(dueDate, { month: "short", day: "numeric" }, tz);
     isOverdue = !isCompleted && dueYmd < todayYmd;
     isDueToday = !isCompleted && dueYmd === todayYmd;
-    if (isDueToday) dueLabel = timeStr ? `Today · ${timeStr}` : "Today";
-    else if (isOverdue) dueLabel = timeStr ? `Overdue · ${dateStr}, ${timeStr}` : `Overdue · ${dateStr}`;
+    if (isOverdue) dueLabel = timeStr ? `Overdue · ${dateStr}, ${timeStr}` : `Overdue · ${dateStr}`;
+    else if (isDueToday) dueLabel = timeStr ? `Today · ${timeStr}` : "Today";
     else dueLabel = timeStr ? `${dateStr}, ${timeStr}` : dateStr;
   }
 

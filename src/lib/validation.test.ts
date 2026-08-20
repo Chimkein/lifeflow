@@ -100,6 +100,11 @@ describe("parseLocalDue", () => {
     expect(() => parseLocalDue("2026-08-21T99:99")).toThrow(ValidationError);
     expect(() => parseLocalDue(12345)).toThrow(ValidationError);
   });
+  it("rejects impossible calendar dates", () => {
+    expect(() => parseLocalDue("2026-02-31")).toThrow(/real calendar date/);
+    expect(() => parseLocalDue("2026-13-01")).toThrow(ValidationError);
+    expect(() => parseLocalDue("2026-00-10")).toThrow(ValidationError);
+  });
 });
 
 describe("isValidHm", () => {
