@@ -37,7 +37,7 @@ export function WeekView({
   const days = getWeekDays(currentDate);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
       {/* Header */}
       <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border">
         <div className="border-r border-border" />

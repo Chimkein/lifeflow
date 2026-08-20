@@ -211,7 +211,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <CalendarHeader
         currentDate={currentDate}
         view={view}
@@ -222,14 +222,14 @@ export default function CalendarPage() {
       />
 
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {loading ? (
         <div className="space-y-2">
-          <Skeleton className="h-[400px] w-full rounded-xl" />
+          <Skeleton className="h-[400px] w-full rounded-2xl" />
         </div>
       ) : (
         <>

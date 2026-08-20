@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, isPast, isToday } from "date-fns";
-import { Circle, CheckCircle2, Link2 } from "lucide-react";
+import { Circle, CheckCircle2, Link2, CalendarClock } from "lucide-react";
 import type { TaskData } from "./task-dialog";
 
 interface TaskCardProps {
@@ -14,9 +14,9 @@ interface TaskCardProps {
 
 const PRIORITY_COLORS: Record<string, string> = {
   low: "bg-muted text-muted-foreground",
-  medium: "bg-info/15 text-info",
+  medium: "bg-info/12 text-info",
   high: "bg-warning/15 text-warning",
-  urgent: "bg-destructive/15 text-destructive",
+  urgent: "bg-destructive/12 text-destructive",
 };
 
 export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
@@ -26,15 +26,18 @@ export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
   const isDueToday = dueDate && !isCompleted && isToday(dueDate);
 
   return (
-    <Card className="border-none shadow-sm transition-shadow hover:shadow-md">
-      <CardContent className="flex items-start gap-3 p-4">
+    <Card
+      size="sm"
+      className="group transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+    >
+      <CardContent className="flex items-start gap-3.5">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onToggle(task);
           }}
           aria-label={isCompleted ? "Mark as not completed" : "Mark as completed"}
-          className="relative mt-0.5 shrink-0 text-muted-foreground transition-colors after:absolute after:-inset-2 hover:text-primary"
+          className="relative mt-0.5 shrink-0 text-muted-foreground/60 transition-colors after:absolute after:-inset-2.5 hover:text-primary"
         >
           {isCompleted ? (
             <CheckCircle2 className="h-5 w-5 text-success" />
@@ -52,34 +55,34 @@ export function TaskCard({ task, onClick, onToggle }: TaskCardProps) {
             {task.title}
           </p>
           {task.description && (
-            <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
               {task.description}
             </p>
           )}
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <Badge
-              variant="secondary"
-              className={`text-xs ${PRIORITY_COLORS[task.priority] ?? ""}`}
+              className={`capitalize ${PRIORITY_COLORS[task.priority] ?? ""}`}
             >
               {task.priority}
             </Badge>
             {dueDate && (
               <span
-                className={`text-xs ${
+                className={`flex items-center gap-1 text-xs font-medium ${
                   isOverdue
-                    ? "font-medium text-destructive"
+                    ? "text-destructive"
                     : isDueToday
-                      ? "font-medium text-warning"
+                      ? "text-warning"
                       : "text-muted-foreground"
                 }`}
               >
-                {isOverdue ? "Overdue: " : isDueToday ? "Due today: " : ""}
+                <CalendarClock className="h-3.5 w-3.5" />
+                {isOverdue ? "Overdue · " : isDueToday ? "Today · " : ""}
                 {format(dueDate, "MMM d")}
               </span>
             )}
             {(task.taskNotes?.length ?? 0) > 0 && (
-              <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                <Link2 className="h-3 w-3" />
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Link2 className="h-3.5 w-3.5" />
                 {task.taskNotes!.length}
               </span>
             )}

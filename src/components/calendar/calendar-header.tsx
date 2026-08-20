@@ -49,14 +49,13 @@ export function CalendarHeader({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="min-w-0 flex-1 truncate text-base font-semibold sm:text-lg">
+        <h2 className="min-w-0 flex-1 truncate font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
           {getTitle(currentDate, view)}
         </h2>
         <Button
-          size="sm"
           onClick={onNewEvent}
           aria-label="New event"
-          className="shrink-0 gap-1.5"
+          className="shrink-0"
         >
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">New Event</span>
@@ -86,15 +85,15 @@ export function CalendarHeader({
           </Button>
         </div>
 
-        <div className="flex rounded-lg border border-border">
+        <div className="flex rounded-xl border border-border bg-card p-1 shadow-sm">
           {views.map((v) => (
             <button
               key={v.value}
               onClick={() => onViewChange(v.value)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg pointer-coarse:min-h-11 ${
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-medium transition-all pointer-coarse:min-h-10 ${
                 view === v.value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {v.label}

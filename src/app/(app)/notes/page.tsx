@@ -132,30 +132,31 @@ export default function NotesPage() {
 
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Notes</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight">
+            Notes
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             {showArchived ? "Archived notes" : "Your notes and ideas"}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant={showArchived ? "default" : "outline"}
-            size="sm"
             onClick={() => {
               setShowArchived(!showArchived);
               setActiveTag(null);
             }}
           >
-            <Archive className="mr-1.5 h-3.5 w-3.5" />
+            <Archive className="h-4 w-4" />
             Archived
           </Button>
           {!showArchived && (
-            <Button size="sm" onClick={handleNewNote}>
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
+            <Button onClick={handleNewNote}>
+              <Plus className="h-4 w-4" />
               New Note
             </Button>
           )}
@@ -165,12 +166,12 @@ export default function NotesPage() {
       {/* Search & tags */}
       <div className="space-y-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search notes..."
+            placeholder="Search notes…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="h-11 rounded-xl pl-10 shadow-sm"
           />
         </div>
         {allTags.length > 0 && (
@@ -179,7 +180,7 @@ export default function NotesPage() {
               <Badge
                 key={tag}
                 variant={activeTag === tag ? "default" : "secondary"}
-                className="cursor-pointer"
+                className="cursor-pointer transition-colors"
                 onClick={() => setActiveTag(activeTag === tag ? null : tag)}
               >
                 {tag}
@@ -191,7 +192,7 @@ export default function NotesPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -200,26 +201,31 @@ export default function NotesPage() {
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[140px] rounded-xl" />
+            <Skeleton key={i} className="h-[150px] rounded-2xl" />
           ))}
         </div>
       ) : notes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <StickyNote className="mb-3 h-12 w-12 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-success/12">
+            <StickyNote className="h-7 w-7 text-success" />
+          </div>
+          <p className="font-heading text-lg font-semibold">
             {search || activeTag
               ? "No notes match your search"
               : showArchived
                 ? "No archived notes"
                 : "No notes yet"}
           </p>
+          <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+            {search || activeTag
+              ? "Try a different search or tag."
+              : showArchived
+                ? "Notes you archive will land here."
+                : "Capture an idea, a list, or a thought — it'll live here."}
+          </p>
           {!search && !activeTag && !showArchived && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              onClick={handleNewNote}
-            >
+            <Button className="mt-5" onClick={handleNewNote}>
+              <Plus className="h-4 w-4" />
               Create your first note
             </Button>
           )}

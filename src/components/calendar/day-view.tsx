@@ -37,7 +37,7 @@ export function DayView({
   const timedEvents = dayEvents.filter((e) => !e.allDay);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
       {/* All-day events */}
       {allDayEvents.length > 0 && (
         <div className="border-b border-border p-2">

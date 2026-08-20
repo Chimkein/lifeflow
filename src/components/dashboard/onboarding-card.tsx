@@ -59,52 +59,60 @@ export function OnboardingCard() {
   };
 
   return (
-    <Card className="relative border-primary/20 bg-primary/5 p-5">
+    <Card className="relative overflow-hidden border-primary/15 bg-linear-to-br from-primary/8 to-warning/5">
       <button
         onClick={dismiss}
-        className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground"
+        className="absolute right-4 top-4 z-10 text-muted-foreground transition-colors hover:text-foreground"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />
       </button>
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-primary" />
-        <h3 className="font-semibold">Welcome to LifeFlow</h3>
-      </div>
-      <p className="mt-1 text-sm text-muted-foreground">
-        A couple of quick steps to get the most out of it:
-      </p>
-      <div className="mt-4 space-y-2">
-        {steps.map((s) => (
-          <div
-            key={s.title}
-            className="flex items-center gap-3 rounded-lg bg-background/60 px-3 py-2"
-          >
-            {s.done ? (
-              <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
-            ) : (
-              <Circle className="h-5 w-5 shrink-0 text-muted-foreground/50" />
-            )}
-            <div className="min-w-0 flex-1">
-              <p
-                className={`text-sm font-medium ${
-                  s.done ? "text-muted-foreground line-through" : ""
-                }`}
-              >
-                {s.title}
-              </p>
-              <p className="text-xs text-muted-foreground">{s.desc}</p>
-            </div>
-            {!s.done && s.href && (
-              <Link
-                href={s.href}
-                className="inline-flex h-8 shrink-0 items-center rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-muted"
-              >
-                Go
-              </Link>
-            )}
+      <div className="px-(--card-spacing)">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/12 text-primary">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="font-heading text-lg font-semibold">
+              Welcome to LifeFlow
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              A couple of quick steps to get set up.
+            </p>
           </div>
-        ))}
+        </div>
+        <div className="mt-4 space-y-2">
+          {steps.map((s) => (
+            <div
+              key={s.title}
+              className="flex items-center gap-3 rounded-xl bg-card/70 px-3.5 py-2.5"
+            >
+              {s.done ? (
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+              ) : (
+                <Circle className="h-5 w-5 shrink-0 text-muted-foreground/50" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`text-sm font-medium ${
+                    s.done ? "text-muted-foreground line-through" : ""
+                  }`}
+                >
+                  {s.title}
+                </p>
+                <p className="text-xs text-muted-foreground">{s.desc}</p>
+              </div>
+              {!s.done && s.href && (
+                <Link
+                  href={s.href}
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md"
+                >
+                  Go
+                </Link>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </Card>
   );

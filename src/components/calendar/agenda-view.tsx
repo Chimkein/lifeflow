@@ -17,10 +17,13 @@ interface AgendaViewProps {
 export function AgendaView({ events, onEventClick }: AgendaViewProps) {
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-16 text-center">
-        <Calendar className="mb-3 h-10 w-10 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">
-          No upcoming events in the next 2 weeks
+      <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-16 text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+          <Calendar className="h-7 w-7 text-primary" />
+        </div>
+        <p className="font-heading text-lg font-semibold">A clear fortnight</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          No events in the next two weeks.
         </p>
       </div>
     );
@@ -42,7 +45,7 @@ export function AgendaView({ events, onEventClick }: AgendaViewProps) {
       {grouped.map(({ date, events: dayEvents }, i) => (
         <div
           key={i}
-          className="overflow-hidden rounded-xl border border-border bg-card"
+          className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm"
         >
           <div
             className={`border-b border-border px-4 py-2 ${

@@ -150,47 +150,49 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight">
+            Tasks
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Track and manage your work
           </p>
         </div>
-        <Button size="sm" onClick={handleNewTask}>
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
+        <Button onClick={handleNewTask}>
+          <Plus className="h-4 w-4" />
           New Task
         </Button>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full rounded-lg border border-border sm:w-auto">
+        <div className="flex w-full rounded-xl border border-border bg-card p-1 shadow-sm sm:w-auto">
           {STATUS_TABS.map((t) => (
             <button
               key={t.value}
               onClick={() => setStatusFilter(t.value)}
-              className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg pointer-coarse:min-h-11 sm:flex-initial ${
+              className={`flex-1 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-all pointer-coarse:min-h-10 sm:flex-initial ${
                 statusFilter === t.value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.label}
             </button>
           ))}
         </div>
-        <div className="flex max-w-full overflow-x-auto rounded-lg border border-border">
+        <div className="flex max-w-full overflow-x-auto rounded-xl border border-border bg-card p-1 shadow-sm">
           {PRIORITY_TABS.map((t) => (
             <button
               key={t.value}
               onClick={() => setPriorityFilter(t.value)}
-              className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg pointer-coarse:min-h-11 ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-medium transition-all pointer-coarse:min-h-10 ${
                 priorityFilter === t.value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.label}
@@ -201,7 +203,7 @@ export default function TasksPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -210,24 +212,27 @@ export default function TasksPage() {
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-[80px] rounded-xl" />
+            <Skeleton key={i} className="h-[84px] rounded-2xl" />
           ))}
         </div>
       ) : tasks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <CheckSquare className="mb-3 h-12 w-12 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+            <CheckSquare className="h-7 w-7 text-primary" />
+          </div>
+          <p className="font-heading text-lg font-semibold">
             {statusFilter !== "all" || priorityFilter !== "all"
               ? "No tasks match your filters"
               : "No tasks yet"}
           </p>
+          <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+            {statusFilter !== "all" || priorityFilter !== "all"
+              ? "Try a different filter, or add something new."
+              : "Add your first task and keep everything in one calm place."}
+          </p>
           {statusFilter === "all" && priorityFilter === "all" && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              onClick={handleNewTask}
-            >
+            <Button className="mt-5" onClick={handleNewTask}>
+              <Plus className="h-4 w-4" />
               Create your first task
             </Button>
           )}
