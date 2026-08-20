@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { listEvents } from "@/lib/google-calendar";
-import { startOfZonedDay, endOfZonedDay, formatInTZ } from "@/lib/timezone";
+import { startOfZonedDay, endOfZonedDay, addZonedDays, formatInTZ } from "@/lib/timezone";
 import { parseSSE } from "@/lib/groq-sse";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -122,10 +122,31 @@ export async function chatComplete(
   return data.choices?.[0]?.message?.content ?? "";
 }
 
+// Human-readable "when" for a calendar event: dated (so the AI can match a
+// specific date the user asks about), with time for timed events and an
+// "(all day)" marker for all-day ones.
+function formatEventWhen(start: { dateTime?: string; date?: string }): string {
+  if (start.dateTime) {
+    const d = new Date(start.dateTime);
+    return `${formatInTZ(d, { weekday: "short", month: "short", day: "numeric", year: "numeric" })} at ${formatInTZ(d, { hour: "numeric", minute: "2-digit", hour12: true })}`;
+  }
+  if (start.date) {
+    // All-day dates are timezone-agnostic calendar dates; format from the parts
+    // in UTC so they never shift.
+    const [y, m, d] = start.date.split("-").map(Number);
+    const utc = new Date(Date.UTC(y, m - 1, d));
+    return `${formatInTZ(utc, { weekday: "short", month: "short", day: "numeric", year: "numeric" }, "UTC")} (all day)`;
+  }
+  return "unknown date";
+}
+
 export async function buildUserContext(userId: string): Promise<string> {
   const now = new Date();
   const todayStart = startOfZonedDay(now);
   const todayEnd = endOfZonedDay(now);
+  // Give the AI visibility into upcoming events (not just today) so it can
+  // answer questions about future dates.
+  const calendarEnd = endOfZonedDay(addZonedDays(now, 365));
 
   const [tasks, notes, calendarResult, gmailAppts] = await Promise.all([
     prisma.task.findMany({
@@ -139,7 +160,7 @@ export async function buildUserContext(userId: string): Promise<string> {
       include: { tags: true },
       take: 10,
     }),
-    fetchCalendarEvents(userId, todayStart, todayEnd),
+    fetchCalendarEvents(userId, todayStart, calendarEnd),
     prisma.gmailAppointment.findMany({
       where: {
         userId,
@@ -162,12 +183,9 @@ export async function buildUserContext(userId: string): Promise<string> {
     lines.push("CALENDAR: not connected (user needs to reconnect Google in Settings)");
     lines.push("");
   } else if (events.length > 0) {
-    lines.push("TODAY'S CALENDAR EVENTS:");
-    for (const e of events) {
-      const time = e.start.dateTime
-        ? formatInTZ(new Date(e.start.dateTime), { hour: "numeric", minute: "2-digit", hour12: true })
-        : "All day";
-      lines.push(`- ${time}: ${e.summary ?? "(No title)"}`);
+    lines.push("CALENDAR EVENTS (from today, next 12 months):");
+    for (const e of events.slice(0, 40)) {
+      lines.push(`- ${formatEventWhen(e.start)}: ${e.summary ?? "(No title)"}`);
     }
     lines.push("");
   }
