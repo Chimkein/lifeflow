@@ -62,6 +62,7 @@ export function AppSidebar() {
 
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- next-themes hydration guard; the resolved theme is only known after mount
   useEffect(() => setMounted(true), []);
   const isDark = mounted && resolvedTheme === "dark";
   const settingsActive = pathname === "/settings";
