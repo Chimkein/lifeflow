@@ -26,19 +26,56 @@ interface SendMessageOptions {
   disableNotification?: boolean;
 }
 
+// Telegram HTML supports only a small tag set (b/strong, i/em, u/ins, s, a,
+// code, pre, blockquote, tg-spoiler). Models often emit <ul>/<li>/<br>, which
+// Telegram rejects — dropping ALL formatting. Convert lists to bullets and
+// strip anything unsupported so the message parses as HTML.
+const TG_ALLOWED = "b|strong|i|em|u|ins|s|strike|del|a|code|pre|blockquote|tg-spoiler";
+
+export function sanitizeTelegramHtml(text: string): string {
+  return text
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
+    .replace(/<\/?(?:ul|ol)>/gi, "")
+    .replace(/<li>\s*/gi, "• ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(new RegExp(`<(?!/?(?:${TG_ALLOWED})(?:\\s|>|/))[^>]*>`, "gi"), "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+// Plain-text fallback: drop every tag and decode the basic entities so a
+// non-HTML resend never shows literal markup.
+export function stripTelegramHtml(text: string): string {
+  return text
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
+    .replace(/<\/?(?:ul|ol)>/gi, "")
+    .replace(/<li>\s*/gi, "• ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export async function sendMessage({
   chatId,
   text,
   parseMode = "HTML",
   disableNotification = false,
 }: SendMessageOptions): Promise<boolean> {
+  const outgoing = parseMode === "HTML" ? sanitizeTelegramHtml(text) : text;
   try {
     const res = await fetch(apiUrl("sendMessage"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
-        text,
+        text: outgoing,
         parse_mode: parseMode,
         disable_notification: disableNotification,
       }),
@@ -56,7 +93,7 @@ export async function sendMessage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          text,
+          text: stripTelegramHtml(text),
           disable_notification: disableNotification,
         }),
       });
