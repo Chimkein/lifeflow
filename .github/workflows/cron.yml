@@ -1,0 +1,39 @@
+name: Scheduled tasks
+
+# Pings the app's cron endpoints on a schedule (Vercel Hobby can't run frequent
+# crons). Requires a repo Actions secret CRON_SECRET matching the app's env, and
+# optionally a repo variable APP_URL (defaults to the production domain).
+on:
+  schedule:
+    - cron: "*/15 * * * *" # daily briefing check — every 15 minutes
+    - cron: "0 * * * *" # gmail appointment sync — hourly
+  workflow_dispatch: {}
+
+concurrency:
+  group: scheduled-tasks
+  cancel-in-progress: false
+
+jobs:
+  briefing:
+    if: ${{ github.event.schedule == '*/15 * * * *' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily briefing
+        env:
+          APP_URL: ${{ vars.APP_URL || 'https://lifeflow-hsa.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X GET "$APP_URL/api/cron/briefing" \
+            -H "Authorization: Bearer $CRON_SECRET"
+
+  gmail-sync:
+    if: ${{ github.event.schedule == '0 * * * *' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger gmail sync
+        env:
+          APP_URL: ${{ vars.APP_URL || 'https://lifeflow-hsa.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X GET "$APP_URL/api/cron/gmail-sync" \
+            -H "Authorization: Bearer $CRON_SECRET"
