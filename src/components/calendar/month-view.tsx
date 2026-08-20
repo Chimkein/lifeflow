@@ -41,7 +41,7 @@ export function MonthView({
   const days = getMonthDays(currentDate);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
       <div className="grid grid-cols-7 border-b border-border">
         {DAY_NAMES.map((day) => (
           <div

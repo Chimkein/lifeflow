@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { MessageMarkdown } from "@/components/ai/message-markdown";
 import {
   Bot,
   Send,
@@ -66,7 +67,7 @@ export default function AIPage() {
   const loadConversations = useCallback(async () => {
     const res = await fetch("/api/ai/conversations");
     const data = await res.json();
-    setConversations(data);
+    setConversations(Array.isArray(data) ? data : []);
   }, []);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export default function AIPage() {
     (async () => {
       const res = await fetch("/api/ai/conversations");
       const data = await res.json();
-      setConversations(data);
+      setConversations(Array.isArray(data) ? data : []);
     })();
   }, []);
 
@@ -278,10 +279,12 @@ export default function AIPage() {
   if (ollamaOnline === false) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-muted">
           <WifiOff className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h1 className="mt-4 text-xl font-semibold">AI is not available</h1>
+        <h1 className="mt-4 font-heading text-2xl font-semibold">
+          AI is not available
+        </h1>
         <p className="mt-2 max-w-sm text-sm text-muted-foreground">
           The AI assistant is currently unavailable. Check that the Groq API key is configured.
         </p>
@@ -349,7 +352,7 @@ export default function AIPage() {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-5.5rem)] gap-4 lg:h-[calc(100dvh-7rem)]">
+    <div className="flex h-[calc(100dvh-7rem)] gap-4 md:h-[calc(100dvh-4rem)]">
       {/* Conversation list — inline pane on desktop */}
       <div className="hidden w-64 shrink-0 flex-col lg:flex">
         {conversationList}
@@ -380,16 +383,18 @@ export default function AIPage() {
 
         {messages.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <Sparkles className="h-8 w-8 text-primary" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-linear-to-br from-[oklch(0.62_0.2_340)] to-[oklch(0.44_0.18_320)] text-white shadow-md">
+              <Sparkles className="h-8 w-8" />
             </div>
-            <h2 className="mt-4 text-lg font-semibold">LifeFlow AI</h2>
-            <p className="mt-1 max-w-md text-sm text-muted-foreground">
+            <h2 className="mt-5 font-heading text-2xl font-semibold">
+              LifeFlow AI
+            </h2>
+            <p className="mt-1.5 max-w-md text-pretty text-sm text-muted-foreground">
               Ask about — or make changes to — your tasks, schedule, and notes.
               I can create, update, complete, and (with your confirmation) delete
               them for you.
             </p>
-            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+            <div className="mt-6 grid w-full max-w-lg gap-2.5 sm:grid-cols-2">
               {[
                 "What should I focus on today?",
                 "Add a task to call the dentist tomorrow",
@@ -402,7 +407,7 @@ export default function AIPage() {
                     setInput(suggestion);
                     textareaRef.current?.focus();
                   }}
-                  className="rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5"
+                  className="rounded-2xl border border-border bg-card px-4 py-3 text-left text-sm text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:text-foreground hover:shadow-md"
                 >
                   {suggestion}
                 </button>
@@ -418,19 +423,21 @@ export default function AIPage() {
                   className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
                 >
                   {msg.role === "assistant" && (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Bot className="h-4 w-4 text-primary" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+                      <Bot className="h-4 w-4" />
                     </div>
                   )}
                   <div
                     className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user"
-                        ? "bg-foreground text-background"
-                        : "bg-muted/50"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "border border-border/60 bg-card shadow-sm"
                     }`}
                   >
                     {msg.role === "assistant" && !msg.content && streaming ? (
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : msg.role === "assistant" ? (
+                      <MessageMarkdown content={msg.content} />
                     ) : (
                       <div className="whitespace-pre-wrap">{msg.content}</div>
                     )}
@@ -472,7 +479,7 @@ export default function AIPage() {
 
         {/* Input */}
         <div className="mx-auto w-full max-w-3xl pt-3">
-          <Card className="flex items-end gap-2 border-none bg-muted/50 p-3 shadow-sm">
+          <Card className="flex items-end gap-2 rounded-2xl p-2.5 shadow-md">
             <Textarea
               ref={textareaRef}
               value={input}
@@ -501,6 +508,10 @@ export default function AIPage() {
           </p>
         </div>
       </div>
+
+      {/* Mirrors the conversation list so the chat column stays centered on the
+          page on wide screens instead of drifting right. */}
+      <div className="hidden w-64 shrink-0 lg:block" aria-hidden />
     </div>
   );
 }

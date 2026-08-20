@@ -14,26 +14,29 @@ interface NoteCardProps {
 export function NoteCard({ note, onClick }: NoteCardProps) {
   return (
     <Card
-      className="cursor-pointer border-none shadow-sm transition-shadow hover:shadow-md"
+      size="sm"
+      className="group h-full cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
       onClick={() => onClick(note)}
     >
-      <CardContent className="p-4">
-        <h3 className="font-medium leading-snug">{note.title}</h3>
+      <CardContent className="flex h-full flex-col">
+        <h3 className="font-medium leading-snug transition-colors group-hover:text-primary">
+          {note.title}
+        </h3>
         {note.content && (
-          <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
+          <p className="mt-1.5 line-clamp-4 text-sm text-muted-foreground">
             {note.content}
           </p>
         )}
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1">
-            {note.tags.map((t) => (
+        <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {note.tags.slice(0, 3).map((t) => (
               <Badge key={t.id} variant="secondary" className="text-xs">
                 {t.tag}
               </Badge>
             ))}
             {(note.taskNotes?.length ?? 0) > 0 && (
-              <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                <Link2 className="h-3 w-3" />
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Link2 className="h-3.5 w-3.5" />
                 {note.taskNotes!.length}
               </span>
             )}

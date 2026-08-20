@@ -161,7 +161,7 @@ export function TaskDialog({
               <label className="mb-1 block text-xs text-muted-foreground">
                 Priority
               </label>
-              <div className="flex rounded-lg border border-border">
+              <div className="flex rounded-xl border border-border bg-muted/50 p-1">
                 {PRIORITIES.map((p) => (
                   <button
                     key={p.value}
@@ -169,10 +169,10 @@ export function TaskDialog({
                     onClick={() =>
                       setForm((f) => ({ ...f, priority: p.value }))
                     }
-                    className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg pointer-coarse:min-h-11 ${
+                    className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-all pointer-coarse:min-h-10 ${
                       form.priority === p.value
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {p.label}

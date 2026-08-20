@@ -211,8 +211,18 @@ export default function SettingsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <h1 className="font-heading text-3xl font-semibold tracking-tight">
+            Settings
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Loading…</p>
+        </div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-32 animate-pulse rounded-xl border border-border/70 bg-card"
+            />
+          ))}
         </div>
       </div>
     );
@@ -221,14 +231,16 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="font-heading text-3xl font-semibold tracking-tight">
+          Settings
+        </h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
           Manage your integrations and preferences
         </p>
       </div>
 
       {/* Appearance */}
-      <Card className="border-none shadow-sm">
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
             <SunMedium className="h-5 w-5 text-primary" />
@@ -269,7 +281,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Telegram Connection */}
-      <Card className="border-none shadow-sm">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
@@ -356,7 +368,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* AI */}
-      <Card className="border-none shadow-sm">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
@@ -438,7 +450,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Gmail Integration */}
-      <Card className="border-none shadow-sm">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
@@ -525,7 +537,7 @@ export default function SettingsPage() {
       </Card>
 
       {settings?.connected && (
-        <Card className="border-none shadow-sm">
+        <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
