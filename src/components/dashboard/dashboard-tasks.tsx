@@ -13,9 +13,10 @@ export interface DashboardTask {
   title: string;
   priority: string;
   dueAt: string | null;
+  createdAt: string;
 }
 
-type SortKey = "due" | "priority";
+type SortKey = "due" | "priority" | "added";
 
 const PRIORITY_RANK: Record<string, number> = {
   urgent: 0,
@@ -50,6 +51,9 @@ export function DashboardTasks({
   const [sort, setSort] = useState<SortKey>("due");
 
   const sorted = [...tasks].sort((a, b) => {
+    if (sort === "added") {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
     if (sort === "priority") {
       const rank =
         (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9);
@@ -81,6 +85,7 @@ export function DashboardTasks({
                 [
                   { key: "due", label: "Due date" },
                   { key: "priority", label: "Priority" },
+                  { key: "added", label: "Added" },
                 ] as const
               ).map((opt) => (
                 <button

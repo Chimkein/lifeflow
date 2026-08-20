@@ -249,16 +249,20 @@ export function AppSidebar() {
               aria-label={item.title}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "group flex flex-1 flex-col items-center gap-1 rounded-xl py-1.5 transition-colors",
+                "group flex flex-1 flex-col items-center gap-1 py-1 transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}
             >
-              <item.icon
+              <span
                 className={cn(
-                  "h-[1.35rem] w-[1.35rem] transition-transform duration-200 group-active:scale-90",
-                  isActive && "scale-105"
+                  "flex h-7 w-12 items-center justify-center rounded-full transition-colors",
+                  isActive
+                    ? "bg-primary/15"
+                    : "group-active:bg-sidebar-accent/60"
                 )}
-              />
+              >
+                <item.icon className="h-[1.3rem] w-[1.3rem] transition-transform duration-200 group-active:scale-90" />
+              </span>
               <span className="text-[0.62rem] font-medium">{item.title}</span>
             </Link>
           );
@@ -270,16 +274,18 @@ export function AppSidebar() {
               <button
                 type="button"
                 aria-label="Account menu"
-                className="group flex flex-1 flex-col items-center gap-1 rounded-xl py-1.5 text-muted-foreground outline-none"
+                className="group flex flex-1 flex-col items-center gap-1 py-1 text-muted-foreground outline-none"
               />
             }
           >
-            <Avatar className="h-[1.35rem] w-[1.35rem]">
-              <AvatarImage src={user?.image ?? undefined} />
-              <AvatarFallback className="bg-primary/15 text-[0.6rem] font-semibold text-primary">
-                {user?.name?.charAt(0) ?? "?"}
-              </AvatarFallback>
-            </Avatar>
+            <span className="flex h-7 w-12 items-center justify-center rounded-full transition-colors group-active:bg-sidebar-accent/60 group-data-[popup-open]:bg-primary/15 group-data-[popup-open]:text-primary">
+              <Avatar className="h-[1.3rem] w-[1.3rem]">
+                <AvatarImage src={user?.image ?? undefined} />
+                <AvatarFallback className="bg-primary/15 text-[0.6rem] font-semibold text-primary">
+                  {user?.name?.charAt(0) ?? "?"}
+                </AvatarFallback>
+              </Avatar>
+            </span>
             <span className="text-[0.62rem] font-medium">Account</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent

@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   let openTasks = 0;
   let noteCount = 0;
   let upcomingCount = 0;
-  let taskList: { id: string; title: string; priority: string; dueAt: string | null }[] = [];
+  let taskList: { id: string; title: string; priority: string; dueAt: string | null; createdAt: string }[] = [];
   let recentNotes: { id: string; title: string; updatedAt: Date; tags: { id: string; tag: string }[] }[] = [];
   let appointments: { id: string; title: string; appointmentTime: string | null; location: string | null; status: string; sourceSubject: string }[] = [];
 
@@ -84,7 +84,13 @@ export default async function DashboardPage() {
         where: { userId, status: { not: "completed" } },
         orderBy: { dueAt: "asc" },
         take: 8,
-        select: { id: true, title: true, priority: true, dueAt: true },
+        select: {
+          id: true,
+          title: true,
+          priority: true,
+          dueAt: true,
+          createdAt: true,
+        },
       }),
     ]);
 
@@ -96,6 +102,7 @@ export default async function DashboardPage() {
       title: t.title,
       priority: t.priority,
       dueAt: t.dueAt ? t.dueAt.toISOString() : null,
+      createdAt: t.createdAt.toISOString(),
     }));
     recentNotes = recent;
     appointments = gmailAppts;

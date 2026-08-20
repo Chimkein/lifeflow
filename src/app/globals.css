@@ -182,9 +182,11 @@
   [data-slot="dialog-content"],
   [data-slot="dropdown-menu-content"],
   [data-slot="popover-content"] {
+    /* A crisp lit top rim fading into a soft sheen — reads as a pane of glass. */
     background-image: linear-gradient(
       to bottom,
-      oklch(1 0 0 / 0.045),
+      oklch(1 0 0 / 0.16),
+      oklch(1 0 0 / 0.05) 3px,
       transparent 42%
     );
   }
