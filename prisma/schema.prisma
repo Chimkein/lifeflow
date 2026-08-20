@@ -32,6 +32,7 @@ model User {
   telegramChatId       String?
   briefingTime         String   @default("07:00")
   briefingEnabled      Boolean  @default(true)
+  lastBriefingSentAt   DateTime?
   telegramLinkCode     String?
   telegramLinkCodeExp  DateTime?
 
