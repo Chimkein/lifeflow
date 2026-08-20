@@ -1,9 +1,17 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildUserContext, buildSystemMessage, type ChatMessage } from "@/lib/ollama";
-import { generateReply } from "@/lib/ai";
+import { chatWithTools } from "@/lib/ai-tools";
 
 export const maxDuration = 60;
+
+const TOOL_INSTRUCTIONS = `
+
+You can act on the user's data with the provided tools: create/update/complete/delete tasks, create/update/delete notes, and create/update/delete calendar events.
+- When the user asks to add, change, complete, or remove something, use the matching tool.
+- Reference existing items by the id shown in brackets in the context above (e.g. [id: ...] / [event id: ...]).
+- IMPORTANT: before DELETING anything, first state exactly what you will delete and ask the user to confirm; only call the delete tool after they reply confirming. Never delete without explicit confirmation.
+- Creating, updating, and completing may be done directly. Afterwards, briefly confirm in plain language what changed. Never show raw ids to the user.`;
 
 // Upper bound on context assembly so a slow dependency (e.g. Google Calendar)
 // can never hang the whole request. If it trips, we answer without context.
@@ -66,6 +74,7 @@ export async function POST(req: Request) {
   });
 
   const systemMsg = buildSystemMessage(userContext);
+  systemMsg.content += TOOL_INSTRUCTIONS;
   const messages: ChatMessage[] = [
     systemMsg,
     ...history.reverse().map((m: { role: string; content: string }) => ({
@@ -75,7 +84,7 @@ export async function POST(req: Request) {
   ];
 
   try {
-    const { text, provider } = await generateReply(messages, model);
+    const { text, provider } = await chatWithTools(userId, messages, model);
     const reply = text.trim() || "I couldn't generate a response. Please try again.";
 
     await prisma.chatMessage.create({

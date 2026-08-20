@@ -185,7 +185,7 @@ export async function buildUserContext(userId: string): Promise<string> {
   } else if (events.length > 0) {
     lines.push("CALENDAR EVENTS (from today, next 12 months):");
     for (const e of events.slice(0, 40)) {
-      lines.push(`- ${formatEventWhen(e.start)}: ${e.summary ?? "(No title)"}`);
+      lines.push(`- ${formatEventWhen(e.start)}: ${e.summary ?? "(No title)"} [event id: ${e.id ?? "?"}]`);
     }
     lines.push("");
   }
@@ -205,7 +205,7 @@ export async function buildUserContext(userId: string): Promise<string> {
     lines.push("OPEN TASKS:");
     for (const t of tasks) {
       const due = t.dueAt ? ` (due ${formatInTZ(t.dueAt, { month: "short", day: "numeric" })})` : "";
-      lines.push(`- [${t.priority}] ${t.title}${due}`);
+      lines.push(`- [${t.priority}] ${t.title}${due} [id: ${t.id}]`);
     }
     lines.push("");
   }
@@ -215,7 +215,7 @@ export async function buildUserContext(userId: string): Promise<string> {
     for (const n of notes) {
       const tags = n.tags.map((t: { tag: string }) => `#${t.tag}`).join(" ");
       const preview = n.content.slice(0, 100).replace(/\n/g, " ");
-      lines.push(`- "${n.title}" (${formatInTZ(n.updatedAt, { month: "short", day: "numeric" })})${tags ? ` ${tags}` : ""}`);
+      lines.push(`- "${n.title}" (${formatInTZ(n.updatedAt, { month: "short", day: "numeric" })})${tags ? ` ${tags}` : ""} [id: ${n.id}]`);
       if (preview) lines.push(`  ${preview}${n.content.length > 100 ? "..." : ""}`);
     }
   }
@@ -237,7 +237,7 @@ export function buildSystemMessage(userContext: string): ChatMessage {
 const REAUTH_ERRORS = new Set(["REAUTH_REQUIRED", "NO_REFRESH_TOKEN", "NO_GOOGLE_ACCOUNT"]);
 
 type CalendarFetchResult = {
-  events: { summary?: string; start: { dateTime?: string; date?: string } }[];
+  events: { id?: string; summary?: string; start: { dateTime?: string; date?: string } }[];
   reauthRequired: boolean;
 };
 
