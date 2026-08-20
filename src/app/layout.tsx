@@ -22,7 +22,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "LifeFlow",
   description: "Your calm, personal productivity hub",
-  icons: { icon: "/logo.png", apple: "/logo.png" },
 };
 
 export const viewport: Viewport = {
