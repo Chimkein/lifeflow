@@ -7,7 +7,8 @@ import {
   type TelegramUpdate,
 } from "@/lib/telegram";
 import { generateAIBriefing, generateTaskList, generateNoteList } from "@/lib/briefing";
-import { buildUserContext, buildSystemMessage, chatComplete } from "@/lib/ollama";
+import { buildUserContext, buildSystemMessage } from "@/lib/ollama";
+import { generateReply } from "@/lib/ai";
 import { prisma } from "@/lib/db";
 import { randomInt } from "crypto";
 
@@ -177,10 +178,10 @@ async function handleAsk(chatId: number, question: string): Promise<void> {
   try {
     const context = await buildUserContext(user.id);
     const systemMsg = buildSystemMessage(context);
-    const answer = await chatComplete(dbUser?.ollamaModel ?? "openai/gpt-oss-20b", [
+    const { text: answer } = await generateReply([
       { ...systemMsg, content: systemMsg.content + "\n\nRespond using Telegram-safe HTML (<b>, <i>, <code>) only. No markdown. Keep it concise." },
       { role: "user", content: question },
-    ]);
+    ], dbUser?.ollamaModel ?? "openai/gpt-oss-20b");
     await sendMessage({ chatId, text: answer || "I couldn't generate a response." });
   } catch {
     await sendMessage({

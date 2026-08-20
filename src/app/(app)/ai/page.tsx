@@ -151,87 +151,35 @@ export default function AIPage() {
         signal: controller.signal,
       });
 
+      const data = (await res.json().catch(() => ({}))) as {
+        conversationId?: string;
+        reply?: string;
+        error?: string;
+      };
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "AI unavailable" }));
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMsg.id
-              ? { ...m, content: `Error: ${err.error}` }
+              ? { ...m, content: `Error: ${data.error ?? "AI unavailable"}` }
               : m
           )
         );
-        setStreaming(false);
         return;
       }
 
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let receivedContent = false;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          let data: {
-            conversationId?: string;
-            token?: string;
-            done?: boolean;
-            error?: string;
-          };
-          try {
-            data = JSON.parse(line.slice(6));
-          } catch {
-            continue;
-          }
-
-          if (data.conversationId && !activeConvId) {
-            setActiveConvId(data.conversationId);
-          }
-
-          if (data.token) {
-            receivedContent = true;
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsg.id
-                  ? { ...m, content: m.content + data.token }
-                  : m
-              )
-            );
-          }
-
-          if (data.done) {
-            loadConversations();
-          }
-
-          if (data.error) {
-            receivedContent = true;
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsg.id
-                  ? { ...m, content: m.content || `Error: ${data.error}` }
-                  : m
-              )
-            );
-          }
-        }
+      if (data.conversationId && !activeConvId) {
+        setActiveConvId(data.conversationId);
       }
 
-      if (!receivedContent) {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsg.id
-              ? { ...m, content: "No response from AI. Please try again." }
-              : m
-          )
-        );
-      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMsg.id
+            ? { ...m, content: data.reply || "No response from AI. Please try again." }
+            : m
+        )
+      );
+      loadConversations();
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         setMessages((prev) =>
