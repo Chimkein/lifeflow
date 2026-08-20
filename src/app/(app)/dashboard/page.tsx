@@ -19,6 +19,7 @@ import {
 } from "@/lib/timezone";
 import Link from "next/link";
 import { AppointmentActions } from "@/components/dashboard/appointment-actions";
+import { OnboardingCard } from "@/components/dashboard/onboarding-card";
 
 function getGreeting() {
   const hour = zonedParts(new Date()).hour;
@@ -99,6 +100,8 @@ export default async function DashboardPage() {
           Here&apos;s what&apos;s happening today
         </p>
       </div>
+
+      <OnboardingCard />
 
       {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

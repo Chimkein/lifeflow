@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TaskCard } from "@/components/tasks/task-card";
@@ -108,25 +109,33 @@ export default function TasksPage() {
       dueAt: form.dueAt || null,
     };
 
-    if (editingTask) {
-      await fetch(`/api/tasks/${editingTask.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+    const res = editingTask
+      ? await fetch(`/api/tasks/${editingTask.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      : await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+    if (res.ok) {
+      toast.success(editingTask ? "Task updated" : "Task created");
+      await fetchTasks();
     } else {
-      await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      toast.error("Couldn't save the task");
     }
-    await fetchTasks();
   };
 
   const handleDelete = async (taskId: string) => {
-    await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
-    await fetchTasks();
+    const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Task deleted");
+      await fetchTasks();
+    } else {
+      toast.error("Couldn't delete the task");
+    }
   };
 
   const handleToggle = async (task: TaskData) => {

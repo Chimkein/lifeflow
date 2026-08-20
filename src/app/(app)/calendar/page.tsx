@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CalendarHeader } from "@/components/calendar/calendar-header";
 import { MonthView } from "@/components/calendar/month-view";
@@ -180,26 +181,33 @@ export default function CalendarPage() {
           },
         };
 
-    if (editingEvent) {
-      await fetch(`/api/calendar/events/${editingEvent.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+    const res = editingEvent
+      ? await fetch(`/api/calendar/events/${editingEvent.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      : await fetch("/api/calendar/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+    if (res.ok) {
+      toast.success(editingEvent ? "Event updated" : "Event created");
+      await fetchEvents();
     } else {
-      await fetch("/api/calendar/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      toast.error("Couldn't save the event");
     }
-
-    await fetchEvents();
   };
 
   const handleDelete = async (eventId: string) => {
-    await fetch(`/api/calendar/events/${eventId}`, { method: "DELETE" });
-    await fetchEvents();
+    const res = await fetch(`/api/calendar/events/${eventId}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Event deleted");
+      await fetchEvents();
+    } else {
+      toast.error("Couldn't delete the event");
+    }
   };
 
   return (
