@@ -35,6 +35,9 @@ async function calendarFetch(
   const token = await getValidAccessToken(userId);
   const res = await fetch(`${CALENDAR_API}${path}`, {
     ...options,
+    // Never let a stalled Google call hang a request (e.g. the AI chat's
+    // buildUserContext) to its serverless timeout.
+    signal: options.signal ?? AbortSignal.timeout(15000),
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",

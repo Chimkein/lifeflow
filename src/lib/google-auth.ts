@@ -37,6 +37,7 @@ export async function getValidAccessToken(userId: string): Promise<string> {
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!res.ok) {

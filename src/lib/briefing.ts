@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { listEvents } from "@/lib/google-calendar";
-import { chatComplete, isOllamaAvailable } from "@/lib/ollama";
+import { isOllamaAvailable } from "@/lib/ollama";
+import { generateReply, isGeminiConfigured } from "@/lib/ai";
 import { startOfZonedDay, endOfZonedDay, addZonedDays, formatInTZ } from "@/lib/timezone";
 
 function escapeHtml(text: string): string {
@@ -194,7 +195,7 @@ export async function generateAIBriefing(userId: string): Promise<string> {
     return generateBriefing(userId);
   }
 
-  const available = await isOllamaAvailable();
+  const available = isGeminiConfigured() || (await isOllamaAvailable());
   if (!available) {
     return generateBriefing(userId);
   }
@@ -202,7 +203,7 @@ export async function generateAIBriefing(userId: string): Promise<string> {
   const dataBriefing = await generateBriefing(userId);
 
   try {
-    const aiSummary = await chatComplete(user.ollamaModel, [
+    const { text: aiSummary } = await generateReply([
       {
         role: "system",
         content:
@@ -212,7 +213,7 @@ export async function generateAIBriefing(userId: string): Promise<string> {
         role: "user",
         content: `Here's my daily briefing data:\n\n${dataBriefing}\n\nGive me a natural-language summary with prioritization advice.`,
       },
-    ]);
+    ], user.ollamaModel);
 
     return `<b>🤖 AI Briefing</b>\n\n${aiSummary}\n\n---\n\n${dataBriefing}`;
   } catch {

@@ -1,13 +1,13 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import {
-  buildUserContext,
-  buildSystemMessage,
-  chatStream,
-  type ChatMessage,
-} from "@/lib/ollama";
+import { buildUserContext, buildSystemMessage, type ChatMessage } from "@/lib/ollama";
+import { generateReply } from "@/lib/ai";
 
 export const maxDuration = 60;
+
+// Upper bound on context assembly so a slow dependency (e.g. Google Calendar)
+// can never hang the whole request. If it trips, we answer without context.
+const CONTEXT_TIMEOUT_MS = 20000;
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -30,9 +30,7 @@ export async function POST(req: Request) {
 
   let convId = conversationId;
   if (!convId) {
-    const conv = await prisma.chatConversation.create({
-      data: { userId },
-    });
+    const conv = await prisma.chatConversation.create({ data: { userId } });
     convId = conv.id;
   } else {
     const exists = await prisma.chatConversation.findFirst({
@@ -50,9 +48,14 @@ export async function POST(req: Request) {
 
   let userContext = "";
   try {
-    userContext = await buildUserContext(userId);
+    userContext = await Promise.race([
+      buildUserContext(userId),
+      new Promise<string>((_, reject) =>
+        setTimeout(() => reject(new Error("context timeout")), CONTEXT_TIMEOUT_MS)
+      ),
+    ]);
   } catch (err) {
-    console.error("[AI Chat] buildUserContext failed:", err);
+    console.error("[AI Chat] buildUserContext skipped:", err);
   }
 
   const history = await prisma.chatMessage.findMany({
@@ -72,88 +75,28 @@ export async function POST(req: Request) {
   ];
 
   try {
-    const stream = await chatStream(model, messages, req.signal);
-    let fullResponse = "";
+    const { text, provider } = await generateReply(messages, model);
+    const reply = text.trim() || "I couldn't generate a response. Please try again.";
 
-    const encoder = new TextEncoder();
-    const responseStream = new ReadableStream({
-      async start(controller) {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ conversationId: convId })}\n\n`)
-        );
-
-        const reader = stream.getReader();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            fullResponse += value;
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ token: value })}\n\n`)
-            );
-          }
-
-          await prisma.chatMessage.create({
-            data: {
-              conversationId: convId,
-              role: "assistant",
-              content: fullResponse,
-            },
-          });
-
-          const msgCount = await prisma.chatMessage.count({
-            where: { conversationId: convId },
-          });
-          if (msgCount === 2) {
-            const title =
-              message.length > 50
-                ? message.slice(0, 50) + "..."
-                : message;
-            await prisma.chatConversation.update({
-              where: { id: convId },
-              data: { title },
-            });
-          }
-
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
-        } catch {
-          try {
-            if (fullResponse) {
-              await prisma.chatMessage.create({
-                data: {
-                  conversationId: convId,
-                  role: "assistant",
-                  content: fullResponse,
-                },
-              });
-            }
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ error: "Stream interrupted" })}\n\n`
-              )
-            );
-          } catch (recoveryErr) {
-            console.error("[AI Chat] Recovery after stream error failed:", recoveryErr);
-          }
-        } finally {
-          controller.close();
-        }
-      },
+    await prisma.chatMessage.create({
+      data: { conversationId: convId, role: "assistant", content: reply },
     });
 
-    return new Response(responseStream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-transform",
-        "X-Accel-Buffering": "no",
-      },
+    const msgCount = await prisma.chatMessage.count({
+      where: { conversationId: convId },
     });
+    if (msgCount === 2) {
+      const title = message.length > 50 ? message.slice(0, 50) + "..." : message;
+      await prisma.chatConversation.update({
+        where: { id: convId },
+        data: { title },
+      });
+    }
+
+    return Response.json({ conversationId: convId, reply, provider });
   } catch (err) {
     console.error("[AI Chat] Error:", err);
     const msg = err instanceof Error ? err.message : "AI unavailable";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 502,
-      headers: { "Content-Type": "application/json" },
-    });
+    return Response.json({ error: msg }, { status: 502 });
   }
 }
