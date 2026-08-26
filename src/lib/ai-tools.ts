@@ -279,11 +279,27 @@ export interface ToolChatResult {
   pendingActions: PendingAction[];
 }
 
-async function runToolLoop(p: Provider, userId: string, messages: ChatMessage[]): Promise<ToolChatResult> {
+export interface ToolChatOptions {
+  // Tool names to withhold from the model entirely. Used by the Telegram bot,
+  // which has no inline-button confirmation flow and so must not be able to
+  // reach the delete tools at all. Omit for the full toolset.
+  excludeTools?: ReadonlySet<string>;
+}
+
+async function runToolLoop(
+  p: Provider,
+  userId: string,
+  messages: ChatMessage[],
+  opts?: ToolChatOptions
+): Promise<ToolChatResult> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const convo: any[] = [...messages];
   const actions: { name: string; ok: boolean }[] = [];
   const pending: PendingAction[] = [];
+  const excluded = opts?.excludeTools;
+  const tools = excluded?.size
+    ? TOOLS.filter((t) => !excluded.has(t.function.name))
+    : TOOLS;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const res = await fetch(`${p.baseUrl}/chat/completions`, {
@@ -292,7 +308,7 @@ async function runToolLoop(p: Provider, userId: string, messages: ChatMessage[])
       body: JSON.stringify({
         model: p.model,
         messages: convo,
-        tools: TOOLS,
+        tools,
         tool_choice: "auto",
         max_tokens: 1024,
         temperature: 0.4,
@@ -317,7 +333,20 @@ async function runToolLoop(p: Provider, userId: string, messages: ChatMessage[])
         } catch {
           /* leave empty */
         }
-        if (DESTRUCTIVE_TOOLS.has(tc.function.name)) {
+        if (excluded?.has(tc.function.name)) {
+          // The tool wasn't offered, but a model can still hallucinate a call
+          // to one it saw earlier in the conversation. Refuse rather than
+          // execute — and don't queue it as pending either, since a caller
+          // that excludes a tool has no way to confirm it.
+          convo.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: JSON.stringify({
+              ok: false,
+              error: `${tc.function.name} is not available here. Nothing was changed. Tell the user to do this in the LifeFlow web app.`,
+            }),
+          });
+        } else if (DESTRUCTIVE_TOOLS.has(tc.function.name)) {
           // Hard gate: do NOT delete. Surface a pending action for the UI to
           // confirm, and tell the model it isn't deleted yet.
           const label = await describePending(userId, tc.function.name, args);
@@ -347,13 +376,18 @@ async function runToolLoop(p: Provider, userId: string, messages: ChatMessage[])
 
 // Run the tool-enabled chat with provider fallback (Gemini primary if
 // configured, else Groq).
-export async function chatWithTools(userId: string, messages: ChatMessage[], groqModel: string): Promise<ToolChatResult> {
+export async function chatWithTools(
+  userId: string,
+  messages: ChatMessage[],
+  groqModel: string,
+  opts?: ToolChatOptions
+): Promise<ToolChatResult> {
   const list = providers(groqModel);
   let lastErr: unknown;
   for (const p of list) {
     if (!p.apiKey) continue;
     try {
-      return await runToolLoop(p, userId, messages);
+      return await runToolLoop(p, userId, messages, opts);
     } catch (err) {
       console.error(`[AI Tools] ${p.name} failed:`, err);
       lastErr = err;
