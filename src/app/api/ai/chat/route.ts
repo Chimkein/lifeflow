@@ -2,19 +2,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildUserContext, buildSystemMessage, type ChatMessage } from "@/lib/ollama";
 import { chatWithTools } from "@/lib/ai-tools";
+import { TOOL_INSTRUCTIONS } from "@/lib/ai-prompts";
 import { rateLimit } from "@/lib/rate-limit";
 import { tooManyRequests } from "@/lib/api-helpers";
 import { LIMITS } from "@/lib/validation";
 
 export const maxDuration = 60;
-
-const TOOL_INSTRUCTIONS = `
-
-You can act on the user's data with the provided tools: create/update/complete/delete tasks, create/update/delete notes, and create/update/delete calendar events.
-- When the user asks to add, change, complete, or remove something, use the matching tool.
-- Reference existing items by the id shown in brackets in the context above (e.g. [id: ...] / [event id: ...]).
-- To delete something, call the matching delete tool with the id. The system automatically shows the user a Confirm button and will only delete after they click it — you do NOT need to ask for confirmation in words. Just call the delete tool, then briefly tell the user which item is pending their confirmation.
-- Creating, updating, and completing may be done directly. Afterwards, briefly confirm in plain language what changed. Never show raw ids to the user.`;
 
 // Upper bound on context assembly so a slow dependency (e.g. Google Calendar)
 // can never hang the whole request. If it trips, we answer without context.

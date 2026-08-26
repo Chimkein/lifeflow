@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { handleUpdate } from "@/lib/telegram-bot";
 import { isBotConfigured, type TelegramUpdate } from "@/lib/telegram";
 
@@ -15,12 +15,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let update: TelegramUpdate;
   try {
-    const update: TelegramUpdate = await req.json();
-    await handleUpdate(update);
+    update = await req.json();
   } catch (err) {
-    console.error("[Telegram Webhook] Error:", err);
+    console.error("[Telegram Webhook] Malformed payload:", err);
+    return NextResponse.json({ ok: true });
   }
+
+  // Acknowledge Telegram immediately, then do the work. An /ask can run several
+  // AI tool rounds and outlast Telegram's patience; Telegram would retry the
+  // update, replay the message, and create the same task twice. `after` runs
+  // within this route's maxDuration, after the response is sent.
+  after(async () => {
+    try {
+      await handleUpdate(update);
+    } catch (err) {
+      console.error("[Telegram Webhook] Error:", err);
+    }
+  });
 
   return NextResponse.json({ ok: true });
 }

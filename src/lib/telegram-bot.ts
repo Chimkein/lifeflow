@@ -7,10 +7,19 @@ import {
   type TelegramUpdate,
 } from "@/lib/telegram";
 import { generateAIBriefing, generateTaskList, generateNoteList } from "@/lib/briefing";
-import { buildUserContext, buildSystemMessage } from "@/lib/ollama";
-import { generateReply } from "@/lib/ai";
+import { buildUserContext, buildSystemMessage, type ChatMessage } from "@/lib/ollama";
+import { chatWithTools, DESTRUCTIVE_TOOLS } from "@/lib/ai-tools";
+import { TELEGRAM_TOOL_INSTRUCTIONS } from "@/lib/ai-prompts";
+import { rateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/db";
 import { randomInt } from "crypto";
+
+const DEFAULT_MODEL = "openai/gpt-oss-20b";
+
+// Telegram conversations reuse the web app's chat tables, kept in a single
+// dedicated thread per user so they don't mix into web conversations.
+const TELEGRAM_CONVERSATION_TITLE = "Telegram";
+const TELEGRAM_HISTORY_LIMIT = 20;
 
 export async function generateLinkCode(userId: string): Promise<string> {
   const code = String(randomInt(100000, 999999));
@@ -168,6 +177,17 @@ async function handleAsk(chatId: number, question: string): Promise<void> {
     return;
   }
 
+  // Each call fans out to paid LLM providers over several tool rounds, and can
+  // now write to the user's data. Mirror the web chat's cap.
+  const limit = rateLimit(`ai-chat:${user.id}`, 20, 60_000);
+  if (!limit.ok) {
+    await sendMessage({
+      chatId,
+      text: `Too many requests — give me ${limit.retryAfter}s to catch up.`,
+    });
+    return;
+  }
+
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
     select: { ollamaModel: true },
@@ -176,19 +196,89 @@ async function handleAsk(chatId: number, question: string): Promise<void> {
   await sendMessage({ chatId, text: "Thinking..." });
 
   try {
+    const convId = await getTelegramConversation(user.id);
+    await prisma.chatMessage.create({
+      data: { conversationId: convId, role: "user", content: question },
+    });
+
     const context = await buildUserContext(user.id);
     const systemMsg = buildSystemMessage(context);
-    const { text: answer } = await generateReply([
-      { ...systemMsg, content: systemMsg.content + "\n\nRespond using Telegram-safe HTML (<b>, <i>, <code>) only. No markdown. Keep it concise." },
-      { role: "user", content: question },
-    ], dbUser?.ollamaModel ?? "openai/gpt-oss-20b");
-    await sendMessage({ chatId, text: answer || "I couldn't generate a response." });
-  } catch {
+    systemMsg.content += TELEGRAM_TOOL_INSTRUCTIONS;
+
+    // Includes the message just stored above, so the model sees it as the last
+    // turn — same ordering the web chat route uses.
+    const history = await prisma.chatMessage.findMany({
+      where: { conversationId: convId },
+      orderBy: { createdAt: "desc" },
+      take: TELEGRAM_HISTORY_LIMIT,
+      select: { role: true, content: true },
+    });
+
+    const messages: ChatMessage[] = [
+      systemMsg,
+      ...history.reverse().map((m: { role: string; content: string }) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+    ];
+
+    // Deletes are withheld: Telegram has no Confirm button to gate them behind.
+    const { text, actions } = await chatWithTools(
+      user.id,
+      messages,
+      dbUser?.ollamaModel ?? DEFAULT_MODEL,
+      { excludeTools: DESTRUCTIVE_TOOLS }
+    );
+
+    const reply = buildAskReply(text, actions);
+    await prisma.chatMessage.create({
+      data: { conversationId: convId, role: "assistant", content: reply },
+    });
+    await sendMessage({ chatId, text: reply });
+  } catch (err) {
+    console.error("[Telegram] /ask failed:", err);
     await sendMessage({
       chatId,
       text: "AI is currently unavailable. Please try again later.",
     });
   }
+}
+
+// The model narrates its own actions — which is exactly how this bot used to
+// announce "Task Created" for tasks it never wrote. Trust the tool results, not
+// the prose: if a write failed, say so rather than let the claim stand.
+function buildAskReply(
+  text: string,
+  actions: { name: string; ok: boolean }[]
+): string {
+  const body =
+    text.trim() ||
+    (actions.some((a) => a.ok)
+      ? "Done."
+      : "I couldn't generate a response.");
+
+  const failed = [...new Set(actions.filter((a) => !a.ok).map((a) => a.name))];
+  if (!failed.length) return body;
+
+  const names = failed.map((n) => n.replace(/_/g, " ")).join(", ");
+  return `${body}\n\n\u{26A0} That didn't fully work: <b>${names}</b> failed, so nothing was saved for that part.`;
+}
+
+// One reusable conversation per user, so /ask has memory across messages
+// instead of starting blank every time.
+async function getTelegramConversation(userId: string): Promise<string> {
+  const existing = await prisma.chatConversation.findFirst({
+    where: { userId, title: TELEGRAM_CONVERSATION_TITLE },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await prisma.chatConversation.create({
+    data: { userId, title: TELEGRAM_CONVERSATION_TITLE },
+    select: { id: true },
+  });
+  return created.id;
 }
 
 async function handleToday(chatId: number): Promise<void> {
